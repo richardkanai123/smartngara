@@ -5,8 +5,8 @@ import { DataModel } from "./_generated/dataModel";
 import { query } from "./_generated/server";
 import { betterAuth } from "better-auth/minimal";
 import authConfig from "./auth.config";
-import { organization } from "better-auth/plugins";
-
+import { username } from "better-auth/plugins";
+import { nextCookies } from "better-auth/next-js";
 const siteUrl = process.env.BETTER_AUTH_URL!;
 const secret = process.env.BETTER_AUTH_SECRET!;
 // The component client has methods needed for integrating Convex with Better Auth,
@@ -18,15 +18,20 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     appName: "Smart NGARA",
     baseURL: siteUrl,
     secret: secret,
+    rateLimit:{
+      enabled: true,
+      max: 100,
+    },
     database: auth.adapter(ctx),
-    // Configure simple, non-verified email/password to get started
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,
+      autoSignIn: true,
     },
     plugins: [
-      organization(),
+      username(),
       convex({ authConfig }),
+      nextCookies(),
     ],
   })
 }
@@ -48,5 +53,12 @@ export const getCurrentUserData = query({
   args: {},
   handler: async (ctx) => {
     return auth.getAuthUser(ctx);
+  },
+});
+
+export const getSession = query({
+  args: {},
+  handler: async () => {
+    return auth.clientApi();
   },
 });

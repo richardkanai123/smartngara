@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -10,15 +9,12 @@ import { authClient } from "@/lib/auth-client";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Field,
-  FieldLabel,
   FieldContent,
   FieldError,
   FieldGroup,
 } from "@/components/ui/field";
-import { Label } from "@/components/ui/label";
 import { Fingerprint, Lock, ShieldCheck, Cloud } from "lucide-react";
 import { toast } from "sonner";
 
@@ -39,8 +35,6 @@ const LoginForm = () => {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-    setValue,
-    watch,
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -64,7 +58,6 @@ const LoginForm = () => {
 
   if (sessionData?.user) {
     router.push("/");
-    return null;
   }
 
   const onSubmit = async (values: LoginFormValues) => {
@@ -93,7 +86,7 @@ const LoginForm = () => {
           {/* Brand */}
           <div className="mb-10 flex items-center gap-2">
             <div className="flex size-6 items-center justify-center rounded bg-primary text-primary-foreground">
-              <Fingerprint className="size-3.5" />
+              <Fingerprint className="size-4" />
             </div>
             <span className="text-sm font-semibold tracking-tight">SmartNgara</span>
           </div>
@@ -193,62 +186,38 @@ const LoginForm = () => {
           <div className="absolute bottom-20 right-10 h-28 w-56 rounded-tl-full bg-white/10" />
           <div className="absolute bottom-0 left-20 h-32 w-72 rounded-tr-full bg-white/10" />
 
-          {/* Central Illustration */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="relative flex items-center justify-center">
-              {/* Phone Mockup */}
+          {/* Logo Display */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <div className="relative flex flex-col items-center">
+              {/* Logo Image */}
               <div className="relative">
-                {/* Phone Frame */}
-                <div className="relative h-[320px] w-[180px] rounded-[2rem] border-4 border-white/20 bg-linear-to-b from-purple-400 to-purple-600 shadow-2xl">
-                  {/* Screen Content */}
-                  <div className="absolute inset-2 rounded-[1.5rem] bg-linear-to-b from-pink-400/80 to-purple-500/90">
-                    {/* Fingerprint Icon */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <div className="mb-4 rounded-full border-2 border-white/40 p-4">
-                        <Fingerprint className="size-12 text-white" />
-                      </div>
-                      <p className="text-center text-xs text-white/80">
-                        Please tap your finger
-                        <br />
-                        to your device
-                      </p>
-                      {/* Progress Bar */}
-                      <div className="mt-4 h-1 w-24 overflow-hidden rounded-full bg-white/20">
-                        <div className="h-full w-2/3 rounded-full bg-white" />
-                      </div>
-                    </div>
-                    {/* Top Bar */}
-                    <div className="absolute left-4 right-4 top-4 flex items-center justify-between">
-                      <div className="size-2 rounded-full bg-white" />
-                      <div className="flex gap-1">
-                        <div className="h-2 w-4 rounded-sm bg-white/50" />
-                        <div className="h-2 w-2 rounded-sm bg-white/50" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <img
+                  src="/logo.png"
+                  alt="Smart Ngara Logo"
+                  className="h-auto w-64 object-contain drop-shadow-2xl"
+                />
+              </div>
 
-                {/* Floating Elements */}
-                {/* Checkmark Bubble */}
-                <div className="absolute -right-8 top-8 flex size-14 items-center justify-center rounded-full border-2 border-white/30 bg-white/90 shadow-lg">
-                  <ShieldCheck className="size-7 text-purple-600" />
-                </div>
+              {/* Floating Elements */}
+              {/* Checkmark Bubble */}
+              <div className="absolute -right-4 top-4 flex size-12 items-center justify-center rounded-full border-2 border-white/30 bg-white/90 shadow-lg">
+                <ShieldCheck className="size-6 text-purple-600" />
+              </div>
 
-                {/* Lock Icon */}
-                <div className="absolute -bottom-4 -right-12 rounded-xl border-2 border-white/30 bg-white/90 p-3 shadow-lg">
-                  <Lock className="size-8 text-purple-600" />
-                </div>
+              {/* Lock Icon */}
+              <div className="absolute -bottom-2 -right-8 rounded-xl border-2 border-white/30 bg-white/90 p-2.5 shadow-lg">
+                <Lock className="size-6 text-purple-600" />
+              </div>
 
-                {/* Cloud decorations */}
-                <div className="absolute -left-16 top-16 text-white/40">
-                  <Cloud className="size-12" />
-                </div>
-                <div className="absolute -bottom-8 -left-8 text-white/30">
-                  <Cloud className="size-16" />
-                </div>
-                <div className="absolute -right-4 bottom-24 text-white/30">
-                  <Cloud className="size-10" />
-                </div>
+              {/* Cloud decorations */}
+              <div className="absolute -left-12 top-8 text-white/40">
+                <Cloud className="size-10" />
+              </div>
+              <div className="absolute -bottom-4 -left-4 text-white/30">
+                <Cloud className="size-14" />
+              </div>
+              <div className="absolute -right-2 bottom-20 text-white/30">
+                <Cloud className="size-8" />
               </div>
             </div>
           </div>

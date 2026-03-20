@@ -1,8 +1,7 @@
+import CreateAccountForm from "@/components/auth/create-account-form";
 
 const CreateAccountPage = () => {
-  return (
-    <div>CreateAccountPage</div>
-  )
-}
+  return <CreateAccountForm />;
+};
 
-export default CreateAccountPage
+export default CreateAccountPage;
