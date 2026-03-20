@@ -5,6 +5,7 @@ import { DataModel } from "./_generated/dataModel";
 import { query } from "./_generated/server";
 import { betterAuth } from "better-auth/minimal";
 import authConfig from "./auth.config";
+import { organization } from "better-auth/plugins";
 
 const siteUrl = process.env.BETTER_AUTH_URL!;
 const secret = process.env.BETTER_AUTH_SECRET!;
@@ -24,7 +25,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
       requireEmailVerification: false,
     },
     plugins: [
-      // The Convex plugin is required for Convex compatibility
+      organization(),
       convex({ authConfig }),
     ],
   })

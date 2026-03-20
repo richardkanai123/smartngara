@@ -1,15 +1,12 @@
 // app/layout.tsx
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Almarai, Inter, JetBrains_Mono } from "next/font/google";
+import { Almarai, Inter } from "next/font/google";
 import "./globals.css";
 import { ConvexClientProvider } from "@/lib/convex-client-provider";
 import { getToken } from "@/lib/auth-server";
-import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 import Header from "@/components/navigation/header";
-
-const jetbrainsMono = JetBrains_Mono({subsets:['latin'],variable:'--font-mono'});
 
 const almarai = Almarai({
   variable: "--font-almarai",
