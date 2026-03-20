@@ -38,7 +38,7 @@ const LoginForm = () => {
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
     setValue,
     watch,
   } = useForm<LoginFormValues>({
@@ -50,7 +50,6 @@ const LoginForm = () => {
     },
   });
 
-  const rememberMe = watch("rememberMe");
 
   if (isSessionPending) {
     return (
@@ -104,12 +103,9 @@ const LoginForm = () => {
             <h1 className="text-3xl font-bold tracking-tight text-foreground">
               Holla,
             </h1>
-            <h1 className="text-3xl font-light tracking-tight text-foreground">
+            <h2 className="text-3xl font-light tracking-tight text-foreground">
               Welcome Back
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Hey, welcome back to your special place
-            </p>
+            </h2>
           </div>
 
           {/* Form */}
@@ -150,21 +146,6 @@ const LoginForm = () => {
 
             {/* Remember Me & Forgot Password */}
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="remember-me"
-                  checked={rememberMe}
-                  onCheckedChange={(checked) =>
-                    setValue("rememberMe", checked as boolean)
-                  }
-                />
-                <Label
-                  htmlFor="remember-me"
-                  className="text-xs font-normal text-muted-foreground"
-                >
-                  Remember me
-                </Label>
-              </div>
               <Link
                 href="/forgot-password"
                 className="text-xs text-muted-foreground transition-colors hover:text-primary"
@@ -182,10 +163,11 @@ const LoginForm = () => {
 
             {/* Submit Button */}
             <Button
+              disabled={isSubmitting}
               type="submit"
               className="h-11 w-full bg-purple-600 text-sm font-medium text-white hover:bg-purple-700"
             >
-              Sign In
+              {isSubmitting ? <Spinner className="size-4 animate-spin" /> : "Sign In"}
             </Button>
           </form>
 

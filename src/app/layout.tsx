@@ -7,6 +7,7 @@ import { ConvexClientProvider } from "@/lib/convex-client-provider";
 import { getToken } from "@/lib/auth-server";
 import { ThemeProvider } from "@/components/theme-provider";
 import Header from "@/components/navigation/header";
+import { Toaster } from "@/components/ui/sonner";
 
 const almarai = Almarai({
   variable: "--font-almarai",
@@ -54,6 +55,7 @@ export default function RootLayout({
             {children}
             </AuthProvider>
         </Suspense>
+        <Toaster />
         </ThemeProvider>
       </body>
     </html>
