@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/field";
 import { Fingerprint, Lock, ShieldCheck, Cloud } from "lucide-react";
 import { toast } from "sonner";
+import LogOutBtn from "./log-out-btn";
 
 const loginSchema = z.object({
   email: z.email("Please enter a valid email address"),
@@ -57,7 +58,15 @@ const LoginForm = () => {
   }
 
   if (sessionData?.user) {
-    router.push("/");
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <p className="text-sm text-muted-foreground">You are already logged in</p>
+          <Link href="/" className="text-sm text-primary">Go to home</Link>
+          <LogOutBtn/>
+        </div>
+      </div>
+    );
   }
 
   const onSubmit = async (values: LoginFormValues) => {
