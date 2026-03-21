@@ -25,7 +25,7 @@ const LogOutBtn = () => {
     }
 
     return (
-        <Button onClick={handleSignOut} variant="destructive">Log Out </Button>
+        <Button onClick={handleSignOut} variant="destructive" className='w-full max-w-md'>Log Out </Button>
     )
 }
 

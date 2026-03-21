@@ -63,3 +63,4 @@ export const getUserDetailsById = query({
     return await authComponent.getAnyUserById(ctx, args.id);
   },
 });
+

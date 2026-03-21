@@ -20,7 +20,7 @@ const userButton = user ? <ProfileDropDown user={user} /> : null
 const isError= error && <ShieldWarningIcon className="size-4 text-destructive" />
 
   return (
-    <div className="flex justify-between items-center p-4 border-b fixed top-0 left-0 right-0 z-10">
+    <div className="flex justify-between items-center p-4 border-b fixed top-0 left-0 right-0 z-10 backdrop-blur-lg">
         <div className="flex items-center gap-2">
           <Link href="/">
             <Image className=" " src="/rounded.png" alt="logo" width={30} height={30} />

@@ -70,15 +70,19 @@ async function requireAdmin(ctx: any): Promise<{ _id: Id<"user">; [key: string]:
 export const getMyRole = query({
   args: {},
   handler: async (ctx) => {
-    const user = await authComponent.getAuthUser(ctx);
-    if (!user) return null;
+    try {
+      const user = await authComponent.getAuthUser(ctx);
+      if (!user) return null;
 
-    const role = await ctx.db
-      .query("userRoles")
-      .filter((q) => q.eq(q.field("userId"), user._id))
-      .first();
+      const role = await ctx.db
+        .query("userRoles")
+        .filter((q) => q.eq(q.field("userId"), user._id))
+        .first();
 
-    return role?.role || null;
+      return role?.role || null;
+    } catch {
+      return null;
+    }
   },
 });
 
@@ -640,3 +644,18 @@ function generateToken(): string {
     return v.toString(16);
   });
 }
+
+
+export const getUserRoleByUserId = query({
+  args: {
+    id: v.string(),
+  },
+  handler: async (ctx, args) => {
+
+    const role = await ctx.db.query('userRoles').filter(q => q.eq(q.field('userId'), args.id)).first();
+    if (!role) {
+      throw new Error("Role not found");
+    }
+    return role;
+  },
+});

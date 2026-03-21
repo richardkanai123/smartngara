@@ -55,8 +55,10 @@ export default function RootLayout({
             enableColorScheme
           >
         <Suspense fallback={<div className="min-h-screen" />}>
-          <AuthProvider>
+          <AuthProvider>.
+            <div className="w-full mb-12 ">
             <Header />
+            </div>
             {children}
             </AuthProvider>
         </Suspense>

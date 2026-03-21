@@ -1,6 +1,6 @@
 import LogOutBtn from "@/components/auth/log-out-btn";
 import UnauthenticatedCard from "@/components/auth/unauthenticated-card";
-import UserCard from "@/components/auth/user-card";
+import HomeTabs from "@/components/homepage/home-tabs";
 import { isAuthenticated, preloadAuthQuery } from "@/lib/auth-server";
 import { api } from "@convex/_generated/api";
 import { Suspense } from "react";
@@ -20,7 +20,7 @@ const Home = async () => {
   return (
     <div className="flex flex-col items-center justify-center h-screen gap-4">
       <Suspense fallback={<div>Loading...</div>}>
-        <UserCard preloadedUserQuery={preloadedUserQuery} />
+        <HomeTabs />
         <LogOutBtn />
       </Suspense>
     </div>
