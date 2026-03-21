@@ -1,7 +1,9 @@
 "use client";
 
-import { authClient } from "@/lib/auth-client";
-import { Spinner } from "@/components/ui/spinner";
+import { usePreloadedAuthQuery } from "@convex-dev/better-auth/nextjs/client";
+import { useQuery } from "convex/react";
+import { api } from "@convex/_generated/api";
+import type { Preloaded } from "convex/react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,45 +16,56 @@ import {
   Avatar,
   AvatarImage,
   AvatarFallback,
-  AvatarBadge,
 } from "@/components/ui/avatar";
-import { Camera, MapPin, Pencil, User } from "lucide-react";
+import { MapPin, Pencil, User, Loader2 } from "lucide-react";
 import LogOutBtn from "./log-out-btn";
-import Link from "next/link";
 
-const UserProfile = () => {
-  const { data: sessionData, isPending: isSessionPending } =
-    authClient.useSession();
+/** Format role label for display */
+function formatRoleLabel(role: "client" | "admin" | "courier" | null) {
+  if (!role) return "Unknown";
+  switch (role) {
+    case "admin":
+      return "Admin";
+    case "courier":
+      return "Courier";
+    default:
+      return "Client";
+  }
+}
 
+const UserProfile = ({ preloadedUserQuery }: { preloadedUserQuery: Preloaded<typeof api.auth.getCurrentUser> }) => {
+  const convexUser = usePreloadedAuthQuery(preloadedUserQuery);
+  const userRole = useQuery(api.userRoles.getMyRole);
 
-  if (isSessionPending) {
+  if (convexUser === null) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <Spinner className="size-8" />
-          <p className="text-sm text-muted-foreground">Loading profile...</p>
-        </div>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-2 px-4">
+        <p className="text-center text-sm text-muted-foreground">
+          Could not load your account from the server.
+        </p>
+        <p className="text-center text-xs text-muted-foreground">
+          Check that Convex is running and you are signed in.
+        </p>
       </div>
     );
   }
 
-  const user = sessionData?.user;
-
-  if (!user) {
+  // Show loading state while role is being fetched
+  if (userRole === undefined) {
     return (
-      <div>
-        <h1>Not authenticated</h1>
-        <Link href="/login">Login</Link>
+      <div className="flex min-h-screen flex-col items-center justify-center gap-2 px-4">
+        <Loader2 className="size-8 animate-spin text-primary" />
+        <p className="text-center text-sm text-muted-foreground">
+          Loading profile...
+        </p>
       </div>
-    )
+    );
   }
 
-  // Convert createdAt to Date object if it's a string
-  const createdAtDate = user.createdAt
-    ? new Date(user.createdAt)
+  const createdAtDate = convexUser.createdAt
+    ? new Date(convexUser.createdAt)
     : null;
 
-  // Format date safely
   const formattedDate = createdAtDate
     ? createdAtDate.toLocaleDateString("en-US", {
         year: "numeric",
@@ -61,49 +74,52 @@ const UserProfile = () => {
       })
     : "N/A";
 
-  // Mock data for demonstration - in production, these would come from user metadata
+  const displayName =
+    convexUser.name?.trim() ||
+    convexUser.email ||
+    "User";
+
+  const phone =
+    (convexUser as { phoneNumber?: string | null }).phoneNumber?.trim() ||
+    "—";
+
   const profileData = {
-    firstName: user.name?.split(" ")[0] || "",
-    lastName: user.name?.split(" ").slice(1).join(" ") || "",
+    firstName: displayName.split(" ")[0] || "",
+    lastName: displayName.split(" ").slice(1).join(" ") || "",
     creationDate: formattedDate,
-    email: user.email || "",
-    phone: "(+62) 821 2554-5846",
-    role: "Admin",
-    avatarUrl: user.image || "/logo.png",
+    email: convexUser.email || "",
+    phone,
+    role: formatRoleLabel(userRole),
+    avatarUrl: convexUser.image || "/logo.png",
   };
 
   return (
-    <div className="min-h-screen bg-muted/30 px-4 py-8">
-      <div className="mx-auto max-w-4xl space-y-6">
-        {/* Page Header */}
+      <div className="mx-auto max-w-4xl space-y-4 p-4">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold text-foreground">My Profile</h1>
           <LogOutBtn />
         </div>
 
-        {/* Profile Header Card */}
         <Card className="overflow-visible">
           <CardContent className="pt-6">
             <div className="flex items-start gap-4">
-              {/* Avatar with camera badge */}
               <div className="relative">
                 <Avatar size="lg" className="size-20">
                   <AvatarImage
                     src={profileData.avatarUrl}
-                    alt={user.name || "User"}
+                      alt={convexUser.name || "User"}
                   />
                   <AvatarFallback className="text-lg">
                     {profileData.firstName?.[0] ||
-                      user.name?.[0] ||
+                      convexUser.name?.[0] ||
                       <User className="size-8" />}
                   </AvatarFallback>
                 </Avatar>
               </div>
 
-              {/* User Info */}
               <div className="flex-1 space-y-1">
                 <h2 className="text-base font-semibold text-foreground">
-                  {user.name || "User"}
+                  {convexUser.name || "User"}
                 </h2>
                 <p className="text-sm text-muted-foreground">
                   {profileData.role}
@@ -117,7 +133,6 @@ const UserProfile = () => {
           </CardContent>
         </Card>
 
-        {/* Personal Information Card */}
         <Card>
           <CardHeader className="border-b pb-4">
             <CardTitle className="text-sm font-semibold text-foreground">
@@ -128,6 +143,7 @@ const UserProfile = () => {
                 variant="outline"
                 size="sm"
                 className="gap-1.5 text-xs"
+                type="button"
               >
                 <Pencil className="size-3" />
                 Edit
@@ -176,7 +192,6 @@ const UserProfile = () => {
           </CardContent>
         </Card>
 
-        {/* Address Card */}
         <Card>
           <CardHeader className="border-b pb-4">
             <CardTitle className="text-sm font-semibold text-foreground">
@@ -187,6 +202,7 @@ const UserProfile = () => {
                 variant="outline"
                 size="sm"
                 className="gap-1.5 text-xs"
+                type="button"
               >
                 <Pencil className="size-3" />
                 Edit
@@ -198,20 +214,19 @@ const UserProfile = () => {
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">Town</p>
                 <p className="text-sm font-medium text-foreground">
-                  'Enter your town'
+                  Add your town
                 </p>
               </div>
               <div className="space-y-1">
                 <p className="text-xs text-muted-foreground">Street</p>
                 <p className="text-sm font-medium text-foreground">
-                  'Enter your street'
+                  Add your street
                 </p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
-    </div>
   );
 };
 

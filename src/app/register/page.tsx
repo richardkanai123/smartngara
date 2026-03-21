@@ -1,0 +1,327 @@
+"use client";
+
+import { useRouter, useSearchParams } from "next/navigation";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@convex/_generated/api";
+import { authClient } from "@/lib/auth-client";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Field,
+  FieldContent,
+  FieldError,
+  FieldGroup,
+} from "@/components/ui/field";
+import { Spinner } from "@/components/ui/spinner";
+import { toast } from "sonner";
+import { Lock, CheckCircle, AlertCircle, Sparkles, UserPlus } from "lucide-react";
+
+
+const registerSchema = z
+  .object({
+    name: z.string().min(2, "Name must be at least 2 characters"),
+    username: z.string().min(3, "Username must be at least 3 characters"),
+    password: z
+      .string()
+      .min(8, "Password must be at least 8 characters")
+      .regex(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+        "Password must contain at least one uppercase letter, one lowercase letter, and one number",
+      ),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
+type RegisterFormValues = z.infer<typeof registerSchema>;
+
+export default function RegisterPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token");
+
+  const invite = useQuery(
+    api.userRoles.validateInviteToken,
+    token ? { token } : "skip",
+  );
+  const finalizeRegistration = useMutation(api.userRoles.finalizeInviteRegistration);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting, isSubmitSuccessful },
+  } = useForm<RegisterFormValues>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      name: "",
+      username: "",
+      password: "",
+      confirmPassword: "",
+    },
+  });
+
+  // Handle invalid/missing token
+  if (!token) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
+        <div className="w-full max-w-md text-center">
+          <AlertCircle className="mx-auto mb-4 size-16 text-destructive" />
+          <h1 className="mb-2 text-2xl font-bold">Invalid Invitation</h1>
+          <p className="text-muted-foreground">
+            The registration link is missing or invalid. Please contact your
+            administrator for a valid invitation.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Loading state
+  if (invite === undefined) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background">
+        <Spinner className="size-8" />
+      </div>
+    );
+  }
+
+  // Invalid or expired invite
+  if (!invite) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
+        <div className="w-full max-w-md text-center">
+          <AlertCircle className="mx-auto mb-4 size-16 text-destructive" />
+          <h1 className="mb-2 text-2xl font-bold">Invitation Expired</h1>
+          <p className="text-muted-foreground">
+            This invitation has expired or has already been used. Please
+            contact your administrator for a new invitation.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const onSubmit = async (values: RegisterFormValues) => {
+    if (!token || !invite) return;
+
+    try {
+      const { data, error } = await authClient.signUp.email({
+        email: invite.email,
+        password: values.password,
+        name: values.name,
+        username: values.username,
+      });
+
+      if (error || !data?.user) {
+        throw new Error(error?.message || "Failed to create account");
+      }
+
+      const res = await finalizeRegistration({
+        token,
+        email: invite.email,
+        userId: data.user.id,
+      });
+
+      if (!res.success) {
+        throw new Error("Unable to finalize registration");
+      }
+
+      toast.success("Account created successfully!");
+      setTimeout(() => {
+        router.push("/login");
+      }, 3000);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Registration failed";
+      toast.error(message);
+    }
+  };
+
+  // Success state
+  if (isSubmitSuccessful) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-background p-4">
+        <div className="w-full max-w-md text-center">
+          <CheckCircle className="mx-auto mb-4 size-16 text-green-500" />
+          <h1 className="mb-2 text-2xl font-bold">Welcome to SmartNgara!</h1>
+          <p className="mb-6 text-muted-foreground">
+            Your account has been created successfully. You will be redirected to
+            the login page shortly.
+          </p>
+          <Button onClick={() => router.push("/login")} className="w-full">
+            Go to Login
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-h-screen w-full bg-background">
+      {/* Left Side - Form */}
+      <div className="flex w-full flex-col justify-center px-8 py-12 lg:w-1/2 lg:px-16 xl:px-24">
+        <div className="mx-auto w-full max-w-sm">
+          {/* Brand */}
+          <div className="mb-10 flex items-center gap-2">
+            <div className="flex size-6 items-center justify-center rounded bg-primary text-primary-foreground">
+              <Sparkles className="size-4" />
+            </div>
+            <span className="text-sm font-semibold tracking-tight">
+              SmartNgara
+            </span>
+          </div>
+
+          {/* Heading */}
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">
+              Complete Registration
+            </h1>
+            <h2 className="text-3xl font-light tracking-tight text-foreground">
+              Create Your Account
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              You&apos;ve been invited as a{" "}
+              <span className="font-medium text-primary">{invite.role}</span>.
+              Fill in your details to get started.
+            </p>
+          </div>
+
+          {/* Info Box */}
+          <div className="mb-6 rounded-lg border border-border bg-muted/50 p-4">
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">Email: </span>
+              {invite.email}
+            </p>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            <FieldGroup>
+              {/* Name Field */}
+              <Field>
+                <Label htmlFor="name">Full Name</Label>
+                <FieldContent>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Enter your full name"
+                    className="h-11"
+                    {...register("name")}
+                    aria-invalid={errors.name ? "true" : "false"}
+                  />
+                  {errors.name && (
+                    <FieldError errors={[{ message: errors.name.message }]} />
+                  )}
+                </FieldContent>
+              </Field>
+
+              {/* Username Field */}
+              <Field>
+                <Label htmlFor="username">Username</Label>
+                <FieldContent>
+                  <Input
+                    id="username"
+                    type="text"
+                    placeholder="Choose a username"
+                    className="h-11"
+                    {...register("username")}
+                    aria-invalid={errors.username ? "true" : "false"}
+                  />
+                  {errors.username && (
+                    <FieldError errors={[{ message: errors.username.message }]} />
+                  )}
+                </FieldContent>
+              </Field>
+
+              {/* Password Field */}
+              <Field>
+                <Label htmlFor="password">Password</Label>
+                <FieldContent>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Create a strong password"
+                    className="h-11"
+                    {...register("password")}
+                    aria-invalid={errors.password ? "true" : "false"}
+                  />
+                  {errors.password && (
+                    <FieldError errors={[{ message: errors.password.message }]} />
+                  )}
+                </FieldContent>
+              </Field>
+
+              {/* Confirm Password Field */}
+              <Field>
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <FieldContent>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    placeholder="Confirm your password"
+                    className="h-11"
+                    {...register("confirmPassword")}
+                    aria-invalid={errors.confirmPassword ? "true" : "false"}
+                  />
+                  {errors.confirmPassword && (
+                    <FieldError errors={[{ message: errors.confirmPassword.message }]} />
+                  )}
+                </FieldContent>
+              </Field>
+            </FieldGroup>
+
+            {/* Submit Button */}
+            <Button
+              disabled={isSubmitting}
+              type="submit"
+              className="h-11 w-full bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              {isSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <Spinner className="size-4" />
+                  Creating Account...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <UserPlus className="size-4" />
+                  Create Account
+                </span>
+              )}
+            </Button>
+          </form>
+
+          {/* Help Text */}
+          <p className="mt-6 text-center text-xs text-muted-foreground">
+            Need help? Contact your administrator for assistance.
+          </p>
+        </div>
+      </div>
+
+      {/* Right Side - Decorative */}
+      <div className="hidden lg:flex lg:w-1/2 lg:items-center lg:justify-center lg:bg-muted">
+        <div className="relative w-full max-w-lg p-8">
+          <div className="relative overflow-hidden rounded-2xl bg-linear-to-br from-primary/10 via-background to-secondary/30 p-8 shadow-2xl">
+            <div className="absolute -right-20 -top-20 size-40 rounded-full bg-primary/10 blur-3xl" />
+            <div className="absolute -bottom-20 -left-20 size-40 rounded-full bg-secondary/20 blur-3xl" />
+
+            <div className="relative text-center">
+              <div className="mx-auto mb-6 flex size-20 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
+                <Lock className="size-10" />
+              </div>
+              <h3 className="mb-2 text-2xl font-bold">Secure Your Account</h3>
+              <p className="text-muted-foreground">
+                Create a strong password to protect your account. Use a mix of
+                letters, numbers, and symbols for best security.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

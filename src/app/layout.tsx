@@ -1,24 +1,29 @@
 // app/layout.tsx
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import { Almarai, Inter } from "next/font/google";
 import "./globals.css";
 import { ConvexClientProvider } from "@/lib/convex-client-provider";
 import { getToken } from "@/lib/auth-server";
 import { ThemeProvider } from "@/components/theme-provider";
 import Header from "@/components/navigation/header";
 import { Toaster } from "@/components/ui/sonner";
+import { Roboto, Almendra, Roboto_Mono } from "next/font/google";
 
-const almarai = Almarai({
-  variable: "--font-almarai",
+
+const fontSans = Roboto({
   subsets: ["latin"],
-  weight: ["300", "400", "700", "800"],
+  variable: "--font-sans",
 });
 
-const inter = Inter({
-  variable: "--font-inter",
+const fontSerif = Almendra({
   subsets: ["latin"],
-  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
+  weight: ["400", "700"],
+  variable: "--font-serif",
+});
+
+const fontMono = Roboto_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
 });
 
 export const metadata: Metadata = {
@@ -42,7 +47,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en"  suppressHydrationWarning>
-      <body className={`${almarai.variable} ${inter.variable} antialiased`}>
+      <body className={`${fontSans.variable} ${fontSerif.variable} ${fontMono.variable} antialiased`}>
       <ThemeProvider
             attribute="class"
             defaultTheme="system"

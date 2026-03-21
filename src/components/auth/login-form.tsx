@@ -15,9 +15,10 @@ import {
   FieldError,
   FieldGroup,
 } from "@/components/ui/field";
-import { Fingerprint, Lock, ShieldCheck, Cloud } from "lucide-react";
+import { Fingerprint, Lock, ShieldCheck, Cloud, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import LogOutBtn from "./log-out-btn";
+import Image from "next/image";
 
 const loginSchema = z.object({
   email: z.email("Please enter a valid email address"),
@@ -71,17 +72,18 @@ const LoginForm = () => {
 
   const onSubmit = async (values: LoginFormValues) => {
     try {
-      const result = await authClient.signIn.email({
+    await authClient.signIn.email({
         email: values.email,
         password: values.password,
         rememberMe: values.rememberMe,
+      },{
+        onSuccess: () => {
+          router.push("/");
+        },
+        onError: (error) => {
+          toast.error(error.error.message || "An unexpected error occurred. Please try again.");
+        },
       });
-
-      if (result.error) {
-        toast.error(result.error.message || "Invalid credentials");
-      } else {
-        router.push("/");
-      }
     } catch {
       toast.error("An unexpected error occurred. Please try again.");
     }
@@ -167,9 +169,10 @@ const LoginForm = () => {
             <Button
               disabled={isSubmitting}
               type="submit"
-              className="h-11 w-full bg-purple-600 text-sm font-medium text-white hover:bg-purple-700"
+              className="h-11 w-full inline-flex items-center justify-center gap-2"
             >
-              {isSubmitting ? <Spinner className="size-4 animate-spin" /> : "Sign In"}
+              {isSubmitting ? <Spinner className="size-4 animate-spin" /> : "Log in"}
+              <ArrowRight className="size-4 group-hover:animate-in slide-in-from-right-2 duration-500 [animation-delay:700ms] fill-mode-backwards" />
             </Button>
           </form>
 
@@ -177,10 +180,11 @@ const LoginForm = () => {
           <p className="mt-6 text-center text-xs text-muted-foreground">
             Don&apos;t have an account?{" "}
             <Link
-              href="/create-account"
-              className="font-medium text-purple-600 transition-colors hover:text-purple-700"
+              href="/register"
+              className="inline-flex items-center group justify-center gap-2 mt-2 text-sm font-medium text-purple-600 transition-colors hover:text-purple-700"
             >
-              Sign Up
+                Create now{" "}
+                <ArrowRight className="size-4 group-hover:animate-in slide-in-from-right-2 duration-500 [animation-delay:700ms] fill-mode-backwards" />
             </Link>
           </p>
         </div>
@@ -200,10 +204,12 @@ const LoginForm = () => {
             <div className="relative flex flex-col items-center">
               {/* Logo Image */}
               <div className="relative">
-                <img
-                  src="/logo.png"
+                <Image
+                  src="/images/logo.png"
+                  width={200}
+                  height={200}
                   alt="Smart Ngara Logo"
-                  className="h-auto w-64 object-contain drop-shadow-2xl"
+                  className="h-auto object-contain drop-shadow-2xl"
                 />
               </div>
 

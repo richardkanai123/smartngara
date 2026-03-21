@@ -3,8 +3,10 @@
 import { authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 const LogOutBtn = () => {
+    const router = useRouter();
     const session = authClient.useSession();
 
     const user = session.data?.user;
@@ -19,10 +21,11 @@ const LogOutBtn = () => {
             return;
            }
            toast.success(`Logged out ${user.name} successfully`);
+           router.push("/login");
     }
 
     return (
-        <Button onClick={handleSignOut} variant="destructive">Log Out {user.name}</Button>
+        <Button onClick={handleSignOut} variant="destructive">Log Out {user.username}</Button>
     )
 }
 

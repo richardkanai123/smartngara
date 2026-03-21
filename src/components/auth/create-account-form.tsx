@@ -9,19 +9,21 @@ import { authClient } from "@/lib/auth-client";
 import { Spinner } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Field,
   FieldContent,
   FieldError,
   FieldGroup,
 } from "@/components/ui/field";
-import { UserPlus, Lock, ShieldCheck, Cloud } from "lucide-react";
+import { UserPlus} from "lucide-react";
 import { toast } from "sonner";
 import Illustration from "@/components/auth/illustration";
 
 const createAccountSchema = z
   .object({
-    name: z.string().min(2, "Name must be at least 2 characters"),
+    username: z.string().min(3, "Username must be at least 3 characters"),
+    name: z.string().min(3, "Name must be at least 3 characters"),
     email: z.email("Please enter a valid email address"),
     password: z
       .string()
@@ -49,27 +51,33 @@ const CreateAccountForm = () => {
   } = useForm<CreateAccountFormValues>({
     resolver: zodResolver(createAccountSchema),
     defaultValues: {
+      username: "",
       name: "",
       email: "",
       password: "",
       confirmPassword: "",
+      
     },
   });
 
   const onSubmit = async (values: CreateAccountFormValues) => {
     try {
-      const result = await authClient.signUp.email({
+      await authClient.signUp.email({
+        username: values.username,
         email: values.email,
         password: values.password,
         name: values.name,
+        callbackURL: "/",
+      }, {
+        onSuccess() {
+          toast.success("Account created successfully!");
+          router.push("/");
+        },
+        onError({error}) {
+          const errorMessage = error.message || "Failed to create account";
+          toast.error(errorMessage);
+        },
       });
-
-      if (result.error) {
-        toast.error(result.error.message || "Failed to create account");
-      } else {
-        toast.success("Account created successfully!");
-        router.push("/");
-      }
     } catch {
       toast.error("An unexpected error occurred. Please try again.");
     }
@@ -106,12 +114,31 @@ const CreateAccountForm = () => {
           {/* Form */}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             <FieldGroup>
-              {/* Name Field */}
+              {/* Username Field */}
               <Field>
+                <Label htmlFor="username">Username</Label>
                 <FieldContent>
                   <Input
+                    id="username"
                     type="text"
-                    placeholder="Full Name"
+                    placeholder="Enter your username"
+                    className="h-11"
+                    {...register("username")}
+                    aria-invalid={errors.username ? "true" : "false"}
+                  />
+                  {errors.username && (
+                    <FieldError errors={[{ message: errors.username.message }]} />
+                  )}
+                </FieldContent>
+              </Field>
+              {/* Name Field */}
+              <Field>
+                <Label htmlFor="name">Full Name</Label>
+                <FieldContent>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Enter your full name"
                     className="h-11"
                     {...register("name")}
                     aria-invalid={errors.name ? "true" : "false"}
@@ -124,10 +151,12 @@ const CreateAccountForm = () => {
 
               {/* Email Field */}
               <Field>
+                <Label htmlFor="email">Email</Label>
                 <FieldContent>
                   <Input
+                    id="email"
                     type="email"
-                    placeholder="Email address"
+                    placeholder="Enter your email address"
                     className="h-11"
                     {...register("email")}
                     aria-invalid={errors.email ? "true" : "false"}
@@ -140,10 +169,12 @@ const CreateAccountForm = () => {
 
               {/* Password Field */}
               <Field>
+                <Label htmlFor="password">Password</Label>
                 <FieldContent>
                   <Input
+                    id="password"
                     type="password"
-                    placeholder="Password"
+                    placeholder="Enter your password"
                     className="h-11"
                     {...register("password")}
                     aria-invalid={errors.password ? "true" : "false"}
@@ -158,10 +189,12 @@ const CreateAccountForm = () => {
 
               {/* Confirm Password Field */}
               <Field>
+                <Label htmlFor="confirmPassword">Confirm Password</Label>
                 <FieldContent>
                   <Input
+                    id="confirmPassword"
                     type="password"
-                    placeholder="Confirm Password"
+                    placeholder="Confirm your password"
                     className="h-11"
                     {...register("confirmPassword")}
                     aria-invalid={errors.confirmPassword ? "true" : "false"}

@@ -1,64 +1,65 @@
 import { createClient, type GenericCtx } from "@convex-dev/better-auth";
 import { convex } from "@convex-dev/better-auth/plugins";
 import { components } from "./_generated/api";
-import { DataModel } from "./_generated/dataModel";
-import { query } from "./_generated/server";
 import { betterAuth } from "better-auth/minimal";
 import authConfig from "./auth.config";
+import type { DataModel } from "./_generated/dataModel";
 import { username } from "better-auth/plugins";
-import { nextCookies } from "better-auth/next-js";
-const siteUrl = process.env.BETTER_AUTH_URL!;
+import { query } from "./_generated/server";
+import { v } from "convex/values";
+
+// biome-ignore lint/style/noNonNullAssertion: We need to assert that the environment variables are not null
+const siteUrl = process.env.NEXT_PUBLIC_URL!;
+// biome-ignore lint/style/noNonNullAssertion: We need to assert that the environment variables are not null
 const secret = process.env.BETTER_AUTH_SECRET!;
 // The component client has methods needed for integrating Convex with Better Auth,
 // as well as helper methods for general use.
-export const auth = createClient<DataModel>(components.betterAuth);
+export const authComponent = createClient<DataModel>(components.betterAuth);
 
-export const createAuth = (ctx: GenericCtx<DataModel>) => {
+const createAuth = (ctx: GenericCtx<DataModel>) => {
   return betterAuth({
-    appName: "Smart NGARA",
+    appName: "Smart Ngara",
+    secret,
     baseURL: siteUrl,
-    secret: secret,
-    rateLimit:{
-      enabled: true,
-      max: 100,
-    },
-    database: auth.adapter(ctx),
+    database: authComponent.adapter(ctx),
+    // Configure simple, non-verified email/password to get started
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,
-      autoSignIn: true,
     },
     plugins: [
       username(),
+      // Admin plugin removed - using custom admin implementation
       convex({ authConfig }),
-      nextCookies(),
     ],
-  })
-}
+  });
+};
 
-export const options = createAuth({} as GenericCtx<DataModel>);
+export const auth = createAuth;
 
-// Example function for getting the current user
-// Feel free to edit, omit, etc.
+type Session = ReturnType<typeof createAuth>;
+type User = Awaited<ReturnType<typeof authComponent.getAuthUser>>;
+export type { Session, User };
 
 export const getCurrentUser = query({
   args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    return identity;
+  handler: async (ctx: GenericCtx<DataModel>) => {
+    return await authComponent.getAuthUser(ctx);
   },
 });
 
-export const getCurrentUserData = query({
+export const getCurrentUserWithRole = query({
   args: {},
-  handler: async (ctx) => {
-    return auth.getAuthUser(ctx);
+  handler: async (ctx: GenericCtx<DataModel>) => {
+    return await authComponent.getAuthUser(ctx);
   },
 });
 
-export const getSession = query({
-  args: {},
-  handler: async () => {
-    return auth.clientApi();
+export const getUserDetailsById = query({
+  args: {
+    id: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await authComponent.getAnyUserById(ctx, args.id);
   },
 });
