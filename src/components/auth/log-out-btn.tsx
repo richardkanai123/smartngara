@@ -20,12 +20,12 @@ const LogOutBtn = () => {
             toast.error(res.error.message);
             return;
            }
-           toast.success(`Logged out ${user.name} successfully`);
+           toast.success(`Logged out ${user.username} successfully`);
            router.push("/login");
     }
 
     return (
-        <Button onClick={handleSignOut} variant="destructive">Log Out {user.username}</Button>
+        <Button onClick={handleSignOut} variant="destructive">Log Out </Button>
     )
 }
 
