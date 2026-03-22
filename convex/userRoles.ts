@@ -1,67 +1,33 @@
-import { defineSchema, defineTable } from "convex/server";
-import { v } from "convex/values";
+import { v, type GenericId } from "convex/values";
 import { mutation, query, action, internalMutation, internalAction, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { authComponent } from "./auth";
 import type { Id } from "./_generated/dataModel";
+import type { DataModel } from "./_generated/dataModel";
+import type { GenericQueryCtx, GenericMutationCtx } from "convex/server";
 
-/**
- * User Roles Table
- * Stores roles separately from Better Auth user table
- */
-export const userRoles = defineTable({
-  userId: v.id("user"),
-  role: v.union(v.literal("admin"), v.literal("client"), v.literal("courier")),
-  createdBy: v.optional(v.id("user")),
-  createdAt: v.number(),
-})
-  .index("by_userId", ["userId"])
-  .index("by_role", ["role"]);
+// Better Auth provides the "user" table via component
+// Use GenericId for component tables, Id for schema tables
+type UserId = GenericId<"user">;
 
-/**
- * Invites Table
- * Tracks pending user invitations
- * NOTE: tempPassword removed - users set their own password during registration
- */
-export const invites = defineTable({
-  email: v.string(),
-  role: v.union(v.literal("client"), v.literal("courier")),
-  invitedBy: v.id("user"),
-  token: v.string(),
-  expiresAt: v.number(),
-  createdAt: v.number(),
-  status: v.union(v.literal("pending"), v.literal("accepted"), v.literal("expired"), v.literal("revoked")),
-  acceptedAt: v.optional(v.number()),
-  userId: v.optional(v.id("user")),
-})
-  .index("by_token", ["token"])
-  .index("by_email", ["email"])
-  .index("by_status", ["status"]);
-
-
-
-  export default defineSchema({
-    userRoles,
-    invites,
-  })
 /**
  * Helper: Require admin authentication
  * Returns authenticated admin user or throws error
  */
-async function requireAdmin(ctx: any): Promise<{ _id: Id<"user">; [key: string]: any }> {
+async function requireAdmin(ctx: GenericQueryCtx<DataModel> | GenericMutationCtx<DataModel>): Promise<{ _id: UserId }> {
   const user = await authComponent.getAuthUser(ctx);
   if (!user) throw new Error("Not authenticated");
 
   const role = await ctx.db
     .query("userRoles")
-    .filter((q: any) => q.eq(q.field("userId"), user._id))
+    .withIndex("by_userId", (q) => q.eq("userId", user._id as UserId))
     .first();
 
   if (role?.role !== "admin") {
     throw new Error("Only admins can perform this action");
   }
 
-  return user;
+  return user as { _id: UserId };
 }
 
 /**
@@ -212,9 +178,9 @@ export const adminCreateUser = mutation({
     }
 
     // 3. Check if user already exists with this email
-    const existingUser = await ctx.db
-      .query("user")
-      .filter((q) => q.eq(q.field("email"), args.email))
+    // Note: "user" table comes from Better Auth component
+    const existingUser = await (ctx.db.query as any)("user")
+      .filter((q: any) => q.eq(q.field("email"), args.email))
       .first();
 
     if (existingUser) {
@@ -299,9 +265,9 @@ export const validateInviteToken = query({
 export const getUserByEmail = internalQuery({
   args: { email: v.string() },
   handler: async (ctx, args) => {
-    return await ctx.db
-      .query("user")
-      .filter((q) => q.eq(q.field("email"), args.email))
+    // Note: "user" table comes from Better Auth component
+    return await (ctx.db.query as any)("user")
+      .filter((q: any) => q.eq(q.field("email"), args.email))
       .first();
   },
 });
@@ -318,7 +284,7 @@ export const completeRegistration = action({
     password: v.string(),
     name: v.string(),
   },
-  handler: async (ctx, args): Promise<{ success: true; email: string; role: string; userId: Id<"user"> }> => {
+  handler: async (ctx, args): Promise<{ success: true; email: string; role: string; userId: UserId }> => {
     // 1. Validate invite
     const invite = await ctx.runQuery(internal.userRoles.getInviteByTokenInternal, {
       token: args.token,
@@ -344,21 +310,21 @@ export const completeRegistration = action({
     }
 
     await ctx.runMutation(internal.userRoles.assignRoleInternal, {
-      userId: user._id as Id<"user">,
+      userId: user._id as unknown as UserId,
       role: invite.role,
-      invitedBy: invite.invitedBy as Id<"user">,
+      invitedBy: invite.invitedBy as unknown as UserId,
     });
 
     await ctx.runMutation(internal.userRoles.acceptInviteInternal, {
       inviteId: invite._id as Id<"invites">,
-      userId: user._id as Id<"user">,
+      userId: user._id as unknown as UserId,
     });
 
     return { 
       success: true, 
       email: invite.email, 
       role: invite.role,
-      userId: user._id as Id<"user">,
+      userId: user._id as unknown as UserId,
     };
   },
 });
@@ -385,7 +351,7 @@ export const finalizeInviteRegistration = mutation({
     if (!user) throw new Error("User account not found — sign-up may not have completed");
     if (user.email !== args.email) throw new Error("User email does not match invitation");
 
-    const typedUserId = user._id as Id<"user">;
+    const typedUserId = user._id as UserId;
 
     const existingRole = await ctx.db
       .query("userRoles")

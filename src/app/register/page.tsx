@@ -133,9 +133,7 @@ export default function RegisterPage() {
       }
 
       toast.success("Account created successfully!");
-      setTimeout(() => {
-        router.push("/login");
-      }, 3000);
+        router.push("/");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Registration failed";
       toast.error(message);

@@ -1,24 +1,14 @@
-// notifications.ts : This file contains the schema for the notifications table.
-import { defineTable } from "convex/server";
-import { v } from "convex/values";
+// notifications.ts : This file contains the Convex functions for managing notifications.
 import { action, mutation, query } from "./_generated/server";
 import { api } from "./_generated/api";
-
-export const notifications = defineTable({
-    userId: v.id("users"),
-    title: v.string(),
-    message: v.string(),
-    createdAt: v.number(),
-    readAt: v.optional(v.number()),
-    type: v.union(v.literal("info"), v.literal("warning"), v.literal("error"), v.literal("success")),
-    url: v.optional(v.string()),
-
-})
+import { authComponent } from "./auth";
+import type { Doc } from "./_generated/dataModel";
+import { v } from "convex/values";
 
 // Mutation to create a notification (used internally and by the action)
 export const create = mutation({
     args: {
-        userId: v.id("users"),
+        userId: v.id("user"),
         title: v.string(),
         message: v.string(),
         type: v.union(v.literal("info"), v.literal("warning"), v.literal("error"), v.literal("success")),
@@ -40,7 +30,7 @@ export const create = mutation({
 // Action wrapper that can be called from frontend (allows for side effects in the future)
 export const createNotification = action({
     args: {
-        userId: v.id("users"),
+        userId: v.id("user"),
         title: v.string(),
         message: v.string(),
         type: v.union(v.literal("info"), v.literal("warning"), v.literal("error"), v.literal("success")),
@@ -58,11 +48,15 @@ export const createNotification = action({
 });
 
 export const getNotifications = query({
-    args: {
-        userId: v.id("users"),
-    },
-    handler: async (ctx, args): Promise<Notification[]> => {
-        return await ctx.db.query("notifications").filter(q => q.eq(q.field("userId"), args.userId)).collect();
+    args: {},
+    handler: async (ctx): Promise<Doc<"notifications">[]> => {
+        const user = await authComponent.getAuthUser(ctx);
+        if (!user) throw new Error("Unauthorized");
+        const notifications = await ctx.db
+            .query("notifications")
+            .withIndex("by_user", (q) => q.eq("userId", user._id))
+            .collect();
+        return notifications;
     },
 });
 
