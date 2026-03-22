@@ -90,6 +90,7 @@ export default function AdminTabs() {
         {/* Custom styled tabs list */}
         <TabsList className="mb-2 sm:mb-4 grid w-full grid-cols-3 gap-1 bg-muted rounded-lg border border-border shadow-sm p-1">
           <TabsTrigger
+            key="tab-dashboard"
             value="dashboard"
             className="relative text-xs sm:text-sm lg:text-base font-medium overflow-hidden rounded-md data-[state=active]:bg-linear-to-br data-[state=active]:from-primary data-[state=active]:to-primary/80 data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/30 text-muted-foreground hover:text-foreground hover:bg-background/50 transition-all py-1.5 sm:py-2 px-1 sm:px-2"
           >
@@ -107,6 +108,7 @@ export default function AdminTabs() {
             )}
           </TabsTrigger>
           <TabsTrigger
+            key="tab-quick-actions"
             value="quick-actions"
             className="relative text-xs sm:text-sm lg:text-base font-medium overflow-hidden rounded-md data-[state=active]:bg-linear-to-br data-[state=active]:from-primary data-[state=active]:to-primary/80 data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/30 text-muted-foreground hover:text-foreground hover:bg-background/50 transition-all py-1.5 sm:py-2 px-1 sm:px-2"
           >
@@ -124,6 +126,7 @@ export default function AdminTabs() {
             )}
           </TabsTrigger>
           <TabsTrigger
+            key="tab-analytics"
             value="analytics"
             className="relative text-xs sm:text-sm lg:text-base font-medium overflow-hidden rounded-md data-[state=active]:bg-linear-to-br data-[state=active]:from-primary data-[state=active]:to-primary/80 data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/30 text-muted-foreground hover:text-foreground hover:bg-background/50 transition-all py-1.5 sm:py-2 px-1 sm:px-2"
           >

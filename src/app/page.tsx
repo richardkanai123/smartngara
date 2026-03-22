@@ -1,8 +1,7 @@
 import LogOutBtn from "@/components/auth/log-out-btn";
 import UnauthenticatedCard from "@/components/auth/unauthenticated-card";
 import HomeTabs from "@/components/homepage/home-tabs";
-import { isAuthenticated, preloadAuthQuery } from "@/lib/auth-server";
-import { api } from "@convex/_generated/api";
+import { isAuthenticated } from "@/lib/auth-server";
 import { Suspense } from "react";
 
 const Home = async () => {
@@ -16,7 +15,6 @@ const Home = async () => {
     );
   }
 
-  const preloadedUserQuery = await preloadAuthQuery(api.auth.getCurrentUser);
   return (
     <div className="flex flex-col items-center justify-center h-screen gap-4">
       <Suspense fallback={<div>Loading...</div>}>

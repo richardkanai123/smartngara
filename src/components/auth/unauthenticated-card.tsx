@@ -3,8 +3,38 @@
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import Link from "next/link";
 import { LogIn, Sparkles, ArrowRight, Shield } from "lucide-react";
+import { authClient } from "@/lib/auth-client";
+import { Spinner } from "../ui/spinner";
+import LogOutBtn from "./log-out-btn";
 
 const UnauthenticatedCard = () => {
+  const {data, isPending} = authClient.useSession();
+
+
+  if(isPending) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <Spinner className="size-8" />
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if(data?.user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <p className="text-sm text-muted-foreground">You are already logged in</p>
+          <Link href="/" className="text-sm text-primary">Go to home</Link>
+          <LogOutBtn/>
+        </div>
+      </div>
+    );
+  }
+
+
   return (
     <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out fill-mode-backwards">
       <Card className="relative overflow-hidden border-0 bg-card shadow-2xl">
