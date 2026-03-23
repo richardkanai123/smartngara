@@ -148,7 +148,7 @@ export default function AdminTabs() {
         <AnimatePresence mode="wait">
           <TabsContent value="dashboard" className="mt-0">
             <motion.div
-              key="dashboard"
+              key="dashboard-main-links"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
@@ -193,7 +193,7 @@ export default function AdminTabs() {
                 <div className="grid gap-2 sm:gap-3 lg:grid-cols-3">
                   {quickLinks.map((link) => (
                     <QuickLinkButton
-                      key={link.label}
+                      key={link.label + link.href}
                       href={link.href}
                       icon={link.icon}
                       label={link.label}
@@ -227,7 +227,7 @@ export default function AdminTabs() {
           {/* Analytics/Overview Tab */}
           <TabsContent value="analytics" className="mt-0">
             <motion.div
-              key="analytics"
+              key="analytics-overview"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}

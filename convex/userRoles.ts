@@ -367,10 +367,22 @@ export const finalizeInviteRegistration = mutation({
       });
     }
 
+    // update invite status to accepted
     await ctx.db.patch(invite._id, {
       status: "accepted",
       acceptedAt: Date.now(),
       userId: typedUserId,
+    });
+
+    // add client to clients table
+    await ctx.db.insert("clients", {
+      userId: user._id,
+      name: user.name,
+      email: user.email,
+      phone: "",
+      address: "",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
     });
 
     return { success: true, email: invite.email, role: invite.role };
