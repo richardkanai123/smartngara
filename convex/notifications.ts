@@ -8,7 +8,7 @@ import { v } from "convex/values";
 // Mutation to create a notification (used internally and by the action)
 export const create = mutation({
     args: {
-        userId: v.id("user"),
+        userId: v.string(),
         title: v.string(),
         message: v.string(),
         type: v.union(v.literal("info"), v.literal("warning"), v.literal("error"), v.literal("success")),
@@ -30,7 +30,7 @@ export const create = mutation({
 // Action wrapper that can be called from frontend (allows for side effects in the future)
 export const createNotification = action({
     args: {
-        userId: v.id("user"),
+        userId: v.string(),
         title: v.string(),
         message: v.string(),
         type: v.union(v.literal("info"), v.literal("warning"), v.literal("error"), v.literal("success")),

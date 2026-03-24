@@ -7,6 +7,7 @@ import { Spinner } from "@/components/ui/spinner"
 import ProfileDropDown from "../auth/profile-dropdown"
 import { ShieldWarningIcon } from "@phosphor-icons/react"
 
+
 const Header = () => {
   const {data, error, isPending, isRefetching} = authClient.useSession()
 

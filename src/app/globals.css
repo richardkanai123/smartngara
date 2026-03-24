@@ -57,6 +57,9 @@
   --shadow-2xl: 0px 4px 10px 0px hsl(240 18.1102% 24.9020% / 0.30);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
+  --shadow-offset-x: 0px;
+  --shadow-offset-y: 4px;
+  --letter-spacing: 0em;
 }
 
 .dark {

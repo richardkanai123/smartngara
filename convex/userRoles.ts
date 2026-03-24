@@ -1,6 +1,5 @@
 import { v, type GenericId } from "convex/values";
-import { mutation, query, action, internalMutation, internalAction, internalQuery } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { mutation, query, internalMutation, internalAction, internalQuery } from "./_generated/server";
 import { authComponent } from "./auth";
 import type { Id } from "./_generated/dataModel";
 import type { DataModel } from "./_generated/dataModel";
@@ -71,7 +70,7 @@ export const amIAdmin = query({
  * Get user role by userId
  */
 export const getUserRole = query({
-  args: { userId: v.id("user") },
+  args: { userId: v.string() },
   handler: async (ctx, args) => {
     const role = await ctx.db
       .query("userRoles")
@@ -87,9 +86,9 @@ export const getUserRole = query({
  */
 export const assignRole = internalMutation({
   args: {
-    userId: v.id("user"),
-    role: v.union(v.literal("admin"), v.literal("client"), v.literal("courier")),
-    createdBy: v.optional(v.id("user")),
+    userId: v.string(),
+    role: v.union(v.literal("admin"), v.literal("client"), v.literal("courier"), v.literal("worker")),
+    createdBy: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     // Check if role already exists
@@ -161,7 +160,7 @@ export const sendInviteEmail = internalAction({
 export const adminCreateUser = mutation({
   args: {
     email: v.string(),
-    role: v.union(v.literal("client"), v.literal("courier")),
+    role: v.union(v.literal("client"), v.literal("courier"), v.literal("worker")),
   },
   handler: async (ctx, args) => {
     // 1. Verify caller is admin
@@ -272,74 +271,20 @@ export const getUserByEmail = internalQuery({
   },
 });
 
-/**
- * Action: Complete registration with user-provided details
- * Called from /register page after user fills in their info
- * Uses action because we need to call Better Auth API
- */
-export const completeRegistration = action({
-  args: {
-    token: v.string(),
-    username: v.string(),
-    password: v.string(),
-    name: v.string(),
-  },
-  handler: async (ctx, args): Promise<{ success: true; email: string; role: string; userId: UserId }> => {
-    // 1. Validate invite
-    const invite = await ctx.runQuery(internal.userRoles.getInviteByTokenInternal, {
-      token: args.token,
-    });
-
-    if (!invite) throw new Error("Invalid or expired invitation token");
-
-    // 2. Check if user already exists
-    const existingUser = await ctx.runQuery(internal.userRoles.getUserByEmail, {
-      email: invite.email,
-    });
-
-    if (existingUser) {
-      throw new Error("An account with this email already exists");
-    }
-
-    const user = await ctx.runQuery(internal.userRoles.getUserByEmail, {
-      email: invite.email,
-    });
-
-    if (!user) {
-      throw new Error("Account created but user not found");
-    }
-
-    await ctx.runMutation(internal.userRoles.assignRoleInternal, {
-      userId: user._id as unknown as UserId,
-      role: invite.role,
-      invitedBy: invite.invitedBy as unknown as UserId,
-    });
-
-    await ctx.runMutation(internal.userRoles.acceptInviteInternal, {
-      inviteId: invite._id as Id<"invites">,
-      userId: user._id as unknown as UserId,
-    });
-
-    return { 
-      success: true, 
-      email: invite.email, 
-      role: invite.role,
-      userId: user._id as unknown as UserId,
-    };
-  },
-});
-
-
 export const finalizeInviteRegistration = mutation({
   args: {
     token: v.string(),
     email: v.string(),
     userId: v.string(),
+    vehicle: v.optional(v.union(v.literal("motorcycle"), v.literal("car"), v.literal("bicycle"), v.literal("other"))),
+    vehicleReg: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    address: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const invite = await ctx.db
       .query("invites")
-      .filter((q) => q.eq(q.field("token"), args.token))
+      .withIndex("by_token", (q) => q.eq("token", args.token))
       .first();
 
     if (!invite) throw new Error("Invalid invitation token");
@@ -347,43 +292,106 @@ export const finalizeInviteRegistration = mutation({
     if (Date.now() > invite.expiresAt) throw new Error("Invitation expired");
     if (invite.email !== args.email) throw new Error("Email mismatch");
 
+    const targetRole = invite.role;
+    const now = Date.now();
+
+    const phone = args.phone ?? "";
+    const address = args.address ?? "";
+
+    if (targetRole === "client") {
+      if (!args.phone) throw new Error("Phone number is required for clients");
+      if (!args.address) throw new Error("Address is required for clients");
+    }
+    if (targetRole === "courier") {
+      if (!args.phone) throw new Error("Phone number is required for couriers");
+      if (!args.vehicle) throw new Error("Vehicle type is required for couriers");
+    }
+
     const user = await authComponent.getAnyUserById(ctx, args.userId);
     if (!user) throw new Error("User account not found — sign-up may not have completed");
-    if (user.email !== args.email) throw new Error("User email does not match invitation");
 
     const typedUserId = user._id as UserId;
 
     const existingRole = await ctx.db
       .query("userRoles")
-      .filter((q) => q.eq(q.field("userId"), typedUserId))
+      .withIndex("by_userId", (q) => q.eq("userId", typedUserId))
       .first();
 
-    if (!existingRole) {
+    if (existingRole) {
+      if (existingRole.role !== targetRole) {
+        throw new Error(`User already has role "${existingRole.role}" which conflicts with invite role "${targetRole}"`);
+      }
+    } else {
       await ctx.db.insert("userRoles", {
         userId: typedUserId,
-        role: invite.role,
+        role: targetRole,
         createdBy: invite.invitedBy,
-        createdAt: Date.now(),
+        createdAt: now,
       });
     }
 
-    // update invite status to accepted
     await ctx.db.patch(invite._id, {
       status: "accepted",
-      acceptedAt: Date.now(),
+      acceptedAt: now,
       userId: typedUserId,
     });
 
-    // add client to clients table
-    await ctx.db.insert("clients", {
-      userId: user._id,
-      name: user.name,
-      email: user.email,
-      phone: "",
-      address: "",
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
+    if (targetRole === "client") {
+      const existing = await ctx.db
+        .query("clients")
+        .withIndex("by_userId", (q) => q.eq("userId", typedUserId))
+        .first();
+      if (!existing) {
+        await ctx.db.insert("clients", {
+          userId: typedUserId,
+          name: user.name,
+          email: user.email,
+          phone,
+          address,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    }
+
+    if (targetRole === "courier") {
+      const existing = await ctx.db
+        .query("couriers")
+        .withIndex("by_userId", (q) => q.eq("userId", typedUserId))
+        .first();
+      if (!existing) {
+        const vehicle = args.vehicle ?? "motorcycle";
+        await ctx.db.insert("couriers", {
+          userId: typedUserId,
+          name: user.name,
+          email: user.email,
+          phone,
+          vehicle,
+          vehicleReg: args.vehicleReg,
+          status: "available",
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    }
+
+    if (targetRole === "worker") {
+      const existing = await ctx.db
+        .query("workers")
+        .withIndex("by_userId", (q) => q.eq("userId", typedUserId))
+        .first();
+      if (!existing) {
+        await ctx.db.insert("workers", {
+          userId: typedUserId,
+          name: user.name,
+          email: user.email,
+          phone,
+          status: "on-duty",
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    }
 
     return { success: true, email: invite.email, role: invite.role };
   },
@@ -418,9 +426,9 @@ export const getInviteByTokenInternal = internalQuery({
  */
 export const assignRoleInternal = internalMutation({
   args: {
-    userId: v.id("user"),
-    role: v.union(v.literal("client"), v.literal("courier")),
-    invitedBy: v.id("user"),
+    userId: v.string(),
+    role: v.union(v.literal("client"), v.literal("courier"), v.literal("worker")),
+    invitedBy: v.string(),
   },
   handler: async (ctx, args) => {
     await ctx.db.insert("userRoles", {
@@ -438,7 +446,7 @@ export const assignRoleInternal = internalMutation({
 export const acceptInviteInternal = internalMutation({
   args: {
     inviteId: v.id("invites"),
-    userId: v.id("user"),
+    userId: v.string(),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.inviteId, {
@@ -520,8 +528,8 @@ export const revokeInvite = mutation({
  */
 export const updateUserRole = mutation({
   args: {
-    userId: v.id("user"),
-    newRole: v.union(v.literal("admin"), v.literal("client"), v.literal("courier")),
+    userId: v.string(),
+    newRole: v.union(v.literal("admin"), v.literal("client"), v.literal("courier"), v.literal("worker")),
   },
   handler: async (ctx, args) => {
     // 1. Verify caller is admin
@@ -569,7 +577,7 @@ export const listInvites = query({
     // Verify admin
     await requireAdmin(ctx);
 
-    let invitesList: Array<{ _id: Id<"invites">; email: string; role: "client" | "courier"; status: string; createdAt: number; expiresAt: number; acceptedAt?: number }>;
+    let invitesList: Array<{ _id: Id<"invites">; email: string; role: "client" | "courier" | "worker"; status: string; createdAt: number; expiresAt: number; acceptedAt?: number }>;
     if (args.status) {
       invitesList = await ctx.db
         .query("invites")

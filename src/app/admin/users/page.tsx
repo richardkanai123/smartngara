@@ -16,12 +16,12 @@ import {
 } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
-import { UserPlus, Shield, Users, ArrowLeft, PackageOpen } from "lucide-react";
+import { UserPlus, Shield, Users, ArrowLeft, PackageOpen, Wrench } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 const createUserSchema = z.object({
   email: z.email("Please enter a valid email address"),
-  role: z.enum(["client", "courier"]),
+  role: z.enum(["client", "courier", "worker"]),
 });
 
 type CreateUserFormValues = z.infer<typeof createUserSchema>;
@@ -107,8 +107,9 @@ export default function AdminUsersPage() {
               Invite New User
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Invite clients or couriers to join the platform. They will receive
-              an email with a registration link to set up their own account.
+              Invite clients, couriers, or workers to join the platform. They
+              will receive an email with a registration link to set up their own
+              account.
             </p>
           </div>
 
@@ -137,7 +138,7 @@ export default function AdminUsersPage() {
               <Field>
                 <Label htmlFor="role">User Role</Label>
                 <FieldContent>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-3">
                     <label
                       className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 p-4 transition-all ${
                         selectedRole === "client"
@@ -170,6 +171,24 @@ export default function AdminUsersPage() {
                       <input
                         type="radio"
                         value="courier"
+                        {...register("role")}
+                        className="sr-only"
+                      />
+                    </label>
+                    <label
+                      className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 p-4 transition-all ${
+                        selectedRole === "worker"
+                          ? "border-primary bg-primary/5"
+                          : errors.role
+                            ? "border-destructive"
+                            : "border-border hover:border-primary/50"
+                      }`}
+                    >
+                      <Wrench className={`mb-2 size-5 ${selectedRole === "worker" ? "text-primary" : "text-muted-foreground"}`} />
+                      <span className={`text-sm font-medium ${selectedRole === "worker" ? "text-primary" : ""}`}>Worker</span>
+                      <input
+                        type="radio"
+                        value="worker"
                         {...register("role")}
                         className="sr-only"
                       />

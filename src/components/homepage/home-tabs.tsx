@@ -26,6 +26,14 @@ const HomeTabs = async () => {
       )
     }
 
+    if (role === 'worker') {
+      return (
+        <div className="w-full p-2 sm:p-3 md:p-4">
+          <p className="text-sm sm:text-base text-muted-foreground">Worker Tabs</p>
+        </div>
+      )
+    }
+
   return (
    <div className='w-full p-2 sm:p-3 md:p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 max-w-7xl mx-auto'>
     <p className="text-sm sm:text-base text-muted-foreground col-span-full">Client Tabs</p>

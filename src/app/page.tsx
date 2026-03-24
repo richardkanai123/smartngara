@@ -1,4 +1,3 @@
-import LogOutBtn from "@/components/auth/log-out-btn";
 import UnauthenticatedCard from "@/components/auth/unauthenticated-card";
 import HomeTabs from "@/components/homepage/home-tabs";
 import { isAuthenticated } from "@/lib/auth-server";
@@ -19,7 +18,6 @@ const Home = async () => {
     <div className="flex flex-col items-center justify-center h-screen gap-4">
       <Suspense fallback={<div>Loading...</div>}>
         <HomeTabs />
-        <LogOutBtn />
       </Suspense>
     </div>
   );

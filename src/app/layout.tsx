@@ -8,7 +8,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import Header from "@/components/navigation/header";
 import { Toaster } from "@/components/ui/sonner";
 import { Roboto, Almendra, Roboto_Mono } from "next/font/google";
-
+import Footer from "@/components/navigation/footer";
 
 const fontSans = Roboto({
   subsets: ["latin"],
@@ -34,9 +34,7 @@ export const metadata: Metadata = {
 async function AuthProvider({ children }: { children: React.ReactNode }) {
   const token = await getToken();
   return (
-    <ConvexClientProvider initialToken={token}>
-      {children}
-    </ConvexClientProvider>
+    <ConvexClientProvider initialToken={token}>{children}</ConvexClientProvider>
   );
 }
 
@@ -46,23 +44,27 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en"  suppressHydrationWarning>
-      <body className={`${fontSans.variable} ${fontSerif.variable} ${fontMono.variable} antialiased`}>
-      <ThemeProvider
-            attribute="class"
-            defaultTheme="system"
-            enableSystem
-            enableColorScheme
-          >
-        <Suspense fallback={<div className="min-h-screen" />}>
-          <AuthProvider>.
-            <div className="w-full mb-12 ">
-            <Header />
-            </div>
-            {children}
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={`${fontSans.variable} ${fontSerif.variable} ${fontMono.variable} antialiased`}
+      >
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          enableColorScheme
+        >
+          <Suspense fallback={<div className="min-h-screen" />}>
+            <AuthProvider>
+              .
+              <div className="w-full mb-12 ">
+                <Header />
+              </div>
+              {children}
+              <Footer />
             </AuthProvider>
-        </Suspense>
-        <Toaster />
+          </Suspense>
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>
