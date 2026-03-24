@@ -19,7 +19,8 @@ export const notifications = defineTable({
   url: v.optional(v.string()),
 })
   .index("by_user", ["userId"])
-  .index("by_user_read", ["userId", "readAt"]);
+  .index("by_user_read", ["userId", "readAt"])
+  .index("by_user_created", ["userId", "createdAt"]);
 
 
 export const userRoles = defineTable({
@@ -80,9 +81,11 @@ export const couriers = defineTable({
   currentClientId: v.optional(v.id("clients")),
   createdAt: v.number(),
   updatedAt: v.number(),
+  handledDeliveries: v.optional(v.array(v.id("deliveries"))),
 })
   .index("by_userId", ["userId"])
-  .index("by_status", ["status"]);
+  .index("by_status", ["status"])
+  .index("by_handledDeliveries", ["handledDeliveries"]);
 
 export const workers = defineTable({
   userId: v.string(),
@@ -100,14 +103,17 @@ export const workers = defineTable({
 export const racks = defineTable({
   label: v.string(),
   size: v.union(v.literal("small"), v.literal("medium"), v.literal("large")),
-  status: v.union(v.literal("available"), v.literal("unavailable"), v.literal("maintenance"), v.literal("out-of-order")),
+  status: v.union(v.literal("available"), v.literal("occupied"), v.literal("maintenance"), v.literal("out-of-order")),
   isReserved: v.boolean(),
   location: v.string(),
   createdAt: v.number(),
   updatedAt: v.number(),
+  orders: v.optional(v.array(v.id("orders"))),
+  maxOrders: v.number(),
 })
   .index("by_label", ["label"])
-  .index("by_status", ["status"]);
+  .index("by_status", ["status"])
+  .index("by_orders", ["orders"]);
 
 export const orders = defineTable({
   clientId: v.id("clients"),
@@ -158,7 +164,7 @@ export const invoices = defineTable({
   clientId: v.id("clients"),
   totalAmount: v.number(),
   amountDue: v.number(),
-  status: v.union(v.literal("pending"), v.literal("paid"), v.literal("partial")),
+  status: v.union(v.literal("pending"), v.literal("paid"), v.literal("partial"), v.literal("cancelled")),
   createdAt: v.number(),
   updatedAt: v.number(),
 })

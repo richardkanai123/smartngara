@@ -9,9 +9,15 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as couriers from "../couriers.js";
+import type * as deliveries from "../deliveries.js";
 import type * as health from "../health.js";
 import type * as http from "../http.js";
+import type * as invoices from "../invoices.js";
 import type * as notifications from "../notifications.js";
+import type * as orders from "../orders.js";
+import type * as racks from "../racks.js";
+import type * as transactions from "../transactions.js";
 import type * as userRoles from "../userRoles.js";
 
 import type {
@@ -22,9 +28,15 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  couriers: typeof couriers;
+  deliveries: typeof deliveries;
   health: typeof health;
   http: typeof http;
+  invoices: typeof invoices;
   notifications: typeof notifications;
+  orders: typeof orders;
+  racks: typeof racks;
+  transactions: typeof transactions;
   userRoles: typeof userRoles;
 }>;
 
