@@ -89,7 +89,7 @@ const UserProfile = ({ preloadedUserQuery }: { preloadedUserQuery: Preloaded<typ
     creationDate: formattedDate,
     email: convexUser.email || "",
     phone,
-    role: formatRoleLabel(userRole),
+    role: formatRoleLabel(userRole as "admin" | "client" | "courier" | null),
     avatarUrl: convexUser.image || "/logo.png",
   };
 

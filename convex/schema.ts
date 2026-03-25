@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { Doc } from "./_generated/dataModel";
 /**
  * Notifications Table
  * Stores user notifications with read status
@@ -189,6 +190,10 @@ export const transactions = defineTable({
   .index("by_referenceId", ["referenceId"])
   .index("by_status", ["status"]);
 
+
+/**
+ * Schema Definition
+ */
 export default defineSchema({
   notifications,
   userRoles,
@@ -202,3 +207,8 @@ export default defineSchema({
   couriers,
   workers,
 });
+
+/**
+ * Type Definitions
+ */
+export type Rack = Doc<"racks">;

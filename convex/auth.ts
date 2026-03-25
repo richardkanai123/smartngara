@@ -1,11 +1,11 @@
 import { createClient, type GenericCtx } from "@convex-dev/better-auth";
 import { convex } from "@convex-dev/better-auth/plugins";
-import { components } from "./_generated/api";
+import { api, components } from "./_generated/api";
 import { betterAuth } from "better-auth/minimal";
 import authConfig from "./auth.config";
 import type { DataModel } from "./_generated/dataModel";
 import { username } from "better-auth/plugins";
-import { query } from "./_generated/server";
+import { query, type QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 
 // biome-ignore lint/style/noNonNullAssertion: We need to assert that the environment variables are not null
@@ -50,8 +50,10 @@ export const getCurrentUser = query({
 
 export const getCurrentUserWithRole = query({
   args: {},
-  handler: async (ctx: GenericCtx<DataModel>) => {
-    return await authComponent.getAuthUser(ctx);
+  handler: async (ctx: QueryCtx): Promise<{ user: User; role: string | null }> => {
+    const user = await authComponent.getAuthUser(ctx);
+    const role: string | null = await ctx.runQuery(api.userRoles.getMyRole, {});
+    return { user, role };
   },
 });
 

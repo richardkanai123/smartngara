@@ -202,6 +202,10 @@
     @apply font-mono;
   }
   button {
-    @apply cursor-pointer;
+    @apply cursor-pointer animate-in transition-all ease-in-out duration-300;
+    /* button hover neon glow border effect */
+    &:hover {
+      @apply border-primary/50 border-2 shadow-lg shadow-sidebar-ring/50 bg-accent-foreground/10;
+    }
   }
 }
