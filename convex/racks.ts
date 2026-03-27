@@ -4,6 +4,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { authComponent } from "./auth";
 import type { Doc } from "./_generated/dataModel";
+import type { Order } from "./schema";
 
 // Mutation to create a rack
 export const createRack = mutation({
@@ -198,5 +199,20 @@ export const removeOrderFromRack = mutation({
     if (!rack.orders?.includes(args.orderId)) throw new Error("Order not found in rack");
     const updatedRack = await ctx.db.patch(args.id, { orders: (rack.orders || []).filter((order) => order !== args.orderId), updatedAt: Date.now() });
     return updatedRack as unknown as Doc<"racks">;
+  },
+});
+
+// get all orders for a rack
+export const getAllOrdersForRack = query({
+  args: {
+    id: v.id("racks"),
+  },
+  handler: async (ctx, args): Promise<Order[]> => {
+    const loggedInUserId = await authComponent.getAuthUser(ctx);
+    if (!loggedInUserId) throw new Error("Not authenticated");
+    const rack = await ctx.db.query("racks").withIndex("by_id", (q) => q.eq("_id", args.id)).first();
+    if (!rack) throw new Error("Rack not found");
+    const orders = await ctx.db.query("orders").withIndex("by_rackId", (q) => q.eq("rackId", [args.id])).collect();
+    return orders as Order[];
   },
 });

@@ -21,10 +21,20 @@ async function RacksSection() {
 
 export default function AdminRackPage() {
   return (
-    <div className="mt-20 flex w-full bg-background justify-center items-center">
-     <Suspense fallback={<div>Loading racks...</div>}>
-        <RacksSection />
-      </Suspense>
+    <div className="flex flex-col w-full bg-background justify-center items-center">
+       <div className="w-full border-b border-border/60 p-4">
+        <h1 className="font-semibold text-2xl tracking-tight md:text-3xl">
+          Rack wall
+        </h1>
+        <p className="mt-2 text-muted-foreground text-sm">
+          Click a slot to open details. Colors show status at a glance.
+        </p>
+      </div>
+      <div className="w-full">
+        <Suspense fallback={<div>Loading racks...</div>}>
+          <RacksSection />
+        </Suspense>
+      </div>
     </div>
   );
 }

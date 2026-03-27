@@ -64,7 +64,7 @@ export default function RootLayout({
               <Footer />
             </AuthProvider>
           </Suspense>
-          <Toaster />
+          <Toaster  position="top-center" richColors/>
         </ThemeProvider>
       </body>
     </html>

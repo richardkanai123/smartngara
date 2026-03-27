@@ -1,6 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
-import { Doc } from "./_generated/dataModel";
+import type{ Doc } from "./_generated/dataModel";
 /**
  * Notifications Table
  * Stores user notifications with read status
@@ -137,7 +137,8 @@ export const orders = defineTable({
   .index("by_clientId", ["clientId"])
   .index("by_handlerId", ["handlerId"])
   .index("by_status", ["status"])
-  .index("by_clientId_status", ["clientId", "status"]);
+  .index("by_clientId_status", ["clientId", "status"])
+  .index("by_rackId", ["rackId"]);
 
 export const deliveries = defineTable({
   orderId: v.id("orders"),
@@ -212,3 +213,13 @@ export default defineSchema({
  * Type Definitions
  */
 export type Rack = Doc<"racks">;
+export type Courier = Doc<"couriers">;
+export type Worker = Doc<"workers">;
+export type Client = Doc<"clients">;
+export type Order = Doc<"orders">;
+export type Delivery = Doc<"deliveries">;
+export type Invoice = Doc<"invoices">;
+export type Transaction = Doc<"transactions">;
+export type Notification = Doc<"notifications">;
+export type UserRole = Doc<"userRoles">;
+export type Invite = Doc<"invites">;
