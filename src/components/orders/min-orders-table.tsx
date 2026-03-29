@@ -3,7 +3,7 @@ import { Order } from "@convex/schema"
 import { ColumnDef, getCoreRowModel, useReactTable } from "@tanstack/react-table"
 import { Table, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { TableBody, TableCell } from "@/components/ui/table"
-import { Badge } from "../ui/badge"
+import { Badge } from "@/components/ui/badge"
 
 const columns: ColumnDef<Order>[] = [
   {

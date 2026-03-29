@@ -40,10 +40,13 @@ const RackCard = ({ rack }: { rack: Rack }) => {
     setisPending(true);
     try {
       await unreserveRack({ id: rack._id });
-      toast.success(`${label} is now unreserved`);
+      toast.success(`${label} is now unreserved`, {
+        icon: <Unlock className="size-4" />,
+      });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to unreserve rack";
-     toast.error(message);
+      const message =
+        error instanceof Error ? error.message : "Failed to unreserve rack";
+      toast.error(message);
     } finally {
       setisPending(false);
     }
@@ -53,9 +56,12 @@ const RackCard = ({ rack }: { rack: Rack }) => {
     setisPending(true);
     try {
       await reserveRack({ id: rack._id });
-      toast.success(`${label} is now reserved`);
+      toast.success(`${label} is now reserved`, {
+        icon: <Lock className="size-4" />,
+      });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to reserve rack";
+      const message =
+        error instanceof Error ? error.message : "Failed to reserve rack";
       toast.error(message);
     } finally {
       setisPending(false);
@@ -67,9 +73,7 @@ const RackCard = ({ rack }: { rack: Rack }) => {
       <DrawerTrigger asChild>
         <button
           type="button"
-          aria-label={
-            isReserved ? `${label}, reserved` : `${label}, rack slot`
-          }
+          aria-label={isReserved ? `${label}, reserved` : `${label}, rack slot`}
           className={cn(
             "group relative flex min-h-[104px] w-full flex-col items-stretch justify-between overflow-hidden rounded-lg border border-border/90 bg-background p-3 text-left shadow-sm transition-all",
             "border-l-4",
@@ -101,10 +105,7 @@ const RackCard = ({ rack }: { rack: Rack }) => {
               {status.replace("-", " ")}
             </span>
             <span className="flex items-center gap-1 font-mono text-muted-foreground text-xs tabular-nums">
-              <Package
-                className="size-3.5 shrink-0 opacity-70"
-                aria-hidden
-              />
+              <Package className="size-3.5 shrink-0 opacity-70" aria-hidden />
               {used}/{maxOrders}
             </span>
           </div>
@@ -196,7 +197,7 @@ const RackCard = ({ rack }: { rack: Rack }) => {
           ) : rackOrders.length > 0 ? (
             <div className="flex flex-col gap-2">
               <h2 className="font-medium text-foreground text-sm">Orders</h2>
-             <MinOrdersTable orders={rackOrders} />
+              <MinOrdersTable orders={rackOrders} />
             </div>
           ) : (
             <p className="text-muted-foreground text-sm">
@@ -206,7 +207,11 @@ const RackCard = ({ rack }: { rack: Rack }) => {
         </div>
 
         <DrawerClose disabled={isPending} asChild>
-          <Button disabled={isPending}   variant="default" className="w-full sm:w-auto">
+          <Button
+            disabled={isPending}
+            variant="default"
+            className="w-full sm:w-auto"
+          >
             Close
           </Button>
         </DrawerClose>

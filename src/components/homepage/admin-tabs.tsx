@@ -9,6 +9,7 @@ import {
   UsersRound,
   LayoutDashboard,
   Zap,
+  UserCog2
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -57,6 +58,20 @@ const mainLinks = [
     icon: Package2Icon,
     description: 'Manage racks',
     variant: 'accent' as const,
+  },
+  {
+    label: "Workers",
+    href: '/admin/users/workers',
+    icon: UserCog2,
+    description: 'Manage workers',
+    variant: 'muted' as const,
+  },
+  {
+    label: "Clients",
+    href: '/admin/users/clients',
+    icon: UsersRound,
+    description: 'Manage clients',
+    variant: 'muted' as const,
   },
 ]
 
