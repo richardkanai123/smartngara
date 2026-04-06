@@ -57,8 +57,8 @@ export const getCourierByUserId = query({
 // Query to get all couriers
 export const getAll = query({
   handler: async (ctx): Promise<Doc<"couriers">[]> => {
-    const loggedInUserId = await authComponent.getAuthUser(ctx);
-    if (!loggedInUserId) throw new Error("Not authenticated");
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Not authenticated");
     const couriers = await ctx.db.query("couriers").collect();
     return couriers;
   },

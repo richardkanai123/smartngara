@@ -9,6 +9,7 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as clients from "../clients.js";
 import type * as couriers from "../couriers.js";
 import type * as deliveries from "../deliveries.js";
 import type * as health from "../health.js";
@@ -28,6 +29,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  clients: typeof clients;
   couriers: typeof couriers;
   deliveries: typeof deliveries;
   health: typeof health;

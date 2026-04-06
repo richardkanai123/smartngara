@@ -21,7 +21,7 @@ const AdminHeader = () => {
             .split("/")
             .slice(1)
             .map((segment, index) => (
-                <Fragment key={`${segment}-${index}`}>
+                <Fragment key={`${segment}-${index + 1}`}>
                     {index > 0 ? " > " : null}
                     <Link
                         href={
@@ -57,7 +57,7 @@ const AdminHeader = () => {
         },
         {
             label: "Couriers",
-            href: "/admin/couriers/add",
+            href: "/admin/users/add",
             icon: <PlusIcon size={16} />
         },
         {
@@ -81,7 +81,7 @@ const AdminHeader = () => {
                 </div>
             </div>
                 {currentQuickButton && (
-                    <Button variant="outline" size="sm" onClick={() => router.push(currentQuickButton.href)}>
+                    <Button onClick={() => router.push(currentQuickButton.href)}>
                         {currentQuickButton.icon} Add New {currentQuickButton.label} 
                     </Button>
                 )}

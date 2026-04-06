@@ -1,34 +1,51 @@
-'use client'
+"use client";
 
-import { usePreloadedAuthQuery } from '@convex-dev/better-auth/nextjs/client'
-import { api } from '@convex/_generated/api'
-import { Preloaded } from 'convex/react'
-import Link from 'next/link'
-import CourierCard from './courier-card'
-import CourierFilter from './courier-filter'
+import { usePreloadedAuthQuery } from "@convex-dev/better-auth/nextjs/client";
+import type { api } from "@convex/_generated/api";
+import type { Preloaded } from "convex/react";
+import CourierCard from "./courier-card";
+import CourierFilter from "./courier-filter";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+import EmptyState from "./empty-state";
 
+const CourierLister = ({
+  preloadedCouriers,
+}: {
+  preloadedCouriers: Preloaded<typeof api.couriers.getAll>;
+}) => {
+  const couriers =
+    usePreloadedAuthQuery<typeof api.couriers.getAll>(preloadedCouriers);
+  const searchParams = useSearchParams();
+  if (!couriers || couriers.length === 0){
+    return <EmptyState />;
+  }
 
-const CourierLister = ({ preloadedCouriers }: { preloadedCouriers: Preloaded<typeof api.couriers.getAll> }) => {
-  const couriers = usePreloadedAuthQuery(preloadedCouriers)
-
-  if (!couriers || couriers.length === 0)
-    return (
-      <div className="flex min-h-[40vh] w-full max-w-lg flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-muted-foreground/25 bg-muted/20 p-8 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">No couriers yet</h1>
-        <p className="text-muted-foreground text-sm">
-          Add a courier to start delivering orders.
-        </p>
-        <Link className="text-primary hover:text-primary/80 p-3 border border-primary/20 rounded-md" href="/admin/couriers/add">Add Courier</Link>
-      </div>
-    )
+  // filter couriers by status and vehicle
+  const status = searchParams.get("status") || "all";
+  const vehicle = searchParams.get("vehicle") || "all";
+  const filteredCouriers = couriers.filter((courier) => {
+    if (status !== "all") {
+      return courier.status === status;
+    }
+    if (vehicle !== "all") {
+      return courier.vehicle === vehicle;
+    }
+    return true;
+  });
   return (
     <div className="w-full p-2">
-      <CourierFilter />
-          {couriers.map((courier) => (
+        <CourierFilter />
+        <div className="w-full mt-2 grid grid-cols-1 auto-rows-fr items-center md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Suspense fallback={<div>Loading couriers...</div>}>
+        {filteredCouriers.length === 0 ? <EmptyState filtered={true} /> : (
+          filteredCouriers.map((courier) => (
             <CourierCard key={courier._id} courier={courier} />
-          ))}
+          ))
+        )}
+        </Suspense>
+        </div>
     </div>
-  )
-}
-
-export default CourierLister
+  );
+};
+export default CourierLister;

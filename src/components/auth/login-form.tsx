@@ -15,10 +15,9 @@ import {
   FieldError,
   FieldGroup,
 } from "@/components/ui/field";
-import { Fingerprint, Lock, ShieldCheck, Cloud, ArrowRight } from "lucide-react";
+import { Fingerprint, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
-import LogOutBtn from "./log-out-btn";
-import Image from "next/image";
+import LogOutBtn from "./log-out-btn"
 import Illustration from "./illustration";
 
 const loginSchema = z.object({
@@ -85,8 +84,9 @@ const LoginForm = () => {
           toast.error(error.error.message || "An unexpected error occurred. Please try again.");
         },
       });
-    } catch {
-      toast.error("An unexpected error occurred. Please try again.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "An unexpected error occurred. Please try again.";
+      toast.error(message);
     }
   };
 
