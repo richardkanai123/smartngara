@@ -59,16 +59,18 @@ export const invites = defineTable({
   .index("by_email_status", ["email", "status"]);
 
 export const clients = defineTable({
-  userId: v.string(),
+  userId: v.optional(v.string()),
   name: v.string(),
   email: v.string(),
   phone: v.optional(v.string()),
   address: v.optional(v.string()),
   createdAt: v.number(),
   updatedAt: v.number(),
+  isWalkIn: v.boolean()
 })
   .index("by_userId", ["userId"])
-  .index("by_email", ["email"]);
+  .index("by_email", ["email"])
+  .index("by_isWalkIn", ["isWalkIn"]);
 
 export const couriers = defineTable({
   userId: v.string(),

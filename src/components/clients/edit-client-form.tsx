@@ -15,7 +15,7 @@ import { toast } from "sonner"
 
 const editClientSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters"),
-  email: z.string().email("Please enter a valid email address"),
+  email: z.email("Please enter a valid email address"),
   phone: z.string().refine(validateKenyanPhoneNumber, {
     message: "Please enter a valid Kenyan phone number",
   }),
@@ -84,12 +84,18 @@ const EditClientForm = ({
       <div className="grid gap-2">
         <Label htmlFor="edit-email">Email</Label>
         <Input
+          disabled={!client.isWalkIn}
           id="edit-email"
           type="email"
           autoComplete="email"
           aria-invalid={!!errors.email}
           {...register("email")}
         />
+        {/* walkin client email can be changed, registered client email cannot be changed, managed via auth  */}
+        {!client.isWalkIn && (
+          <p className="text-xs text-muted-foreground">Email cannot be changed, managed via account settings under your profile.</p>
+        )}
+
         {errors.email && (
           <p className="text-xs text-destructive">{errors.email.message}</p>
         )}

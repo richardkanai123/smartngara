@@ -24,15 +24,19 @@ const CourierLister = ({
   // filter couriers by status and vehicle
   const status = searchParams.get("status") || "all";
   const vehicle = searchParams.get("vehicle") || "all";
+  const name = searchParams.get("name") || "";
+  const nameQuery = name.trim().toLowerCase()
   const filteredCouriers = couriers.filter((courier) => {
-    if (status !== "all") {
-      return courier.status === status;
+    if (status !== "all" && courier.status !== status) return false
+    if (vehicle !== "all" && courier.vehicle !== vehicle) return false
+    if (
+      nameQuery !== "" &&
+      !courier.name.toLowerCase().includes(nameQuery)
+    ) {
+      return false
     }
-    if (vehicle !== "all") {
-      return courier.vehicle === vehicle;
-    }
-    return true;
-  });
+    return true
+  })
   return (
     <div className="w-full p-2">
         <CourierFilter />

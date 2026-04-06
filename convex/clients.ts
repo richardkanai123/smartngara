@@ -86,3 +86,29 @@ export const updateClient = mutation({
     return { success: true, message: `Client ${args.name} updated successfully` };
   },
 });
+
+
+// add walk in client
+export const addWalkInClient = mutation({
+  args: {
+    name: v.string(),
+    email: v.string(),
+    phone: v.string(),
+    address: v.string(),
+  },
+  handler: async (ctx, args): Promise<{ success: boolean, message: string }> => {
+    const loggedInUserId = await authComponent.getAuthUser(ctx);
+    if (!loggedInUserId) throw new Error("Not authenticated");
+    const newClient = {
+      name: args.name,
+      email: args.email,
+      phone: args.phone,
+      address: args.address,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      isWalkIn: true,
+    };
+    await ctx.db.insert("clients", newClient);
+    return { success: true, message: `Walk in client ${args.name} added successfully` };
+  },
+});

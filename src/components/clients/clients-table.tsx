@@ -1,8 +1,11 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { useSearchParams } from "next/navigation"
 import type { Column } from "@tanstack/react-table"
 import type { Client } from "@convex/schema"
+import { filterClientsBySearchParams } from "@/lib/client-filters"
+import ClientsFilterSearch from "./clients-filter-search"
 import {
   Table,
   TableHeader,
@@ -169,11 +172,17 @@ function buildColumns(): ColumnDef<Client>[] {
 }
 
 const ClientsTable = ({ clients }: { clients: Client[] }) => {
+  const searchParams = useSearchParams()
+  const filteredClients = useMemo(
+    () => filterClientsBySearchParams(clients, searchParams),
+    [clients, searchParams]
+  )
+
   const [sorting, setSorting] = useState<SortingState>([])
   const columns = useMemo(() => buildColumns(), [])
 
   const table = useReactTable({
-    data: clients,
+    data: filteredClients,
     columns,
     state: { sorting },
     onSortingChange: setSorting,
@@ -181,8 +190,15 @@ const ClientsTable = ({ clients }: { clients: Client[] }) => {
     getSortedRowModel: getSortedRowModel(),
   })
 
+  const emptyMessage =
+    clients.length > 0 && filteredClients.length === 0
+      ? "No clients match your search or filters."
+      : "No clients found."
+
   return (
-    <div className="overflow-hidden rounded-none border border-border bg-card ring-1 ring-border/40">
+    <div className="space-y-3">
+      <ClientsFilterSearch />
+      <div className="overflow-hidden rounded-none border border-border bg-card ring-1 ring-border/40">
       <Table>
         <TableHeader className="hidden md:table-header-group">
           {table.getHeaderGroups().map((headerGroup) => (
@@ -245,12 +261,13 @@ const ClientsTable = ({ clients }: { clients: Client[] }) => {
                 colSpan={columns.length}
                 className="h-24 text-center text-muted-foreground"
               >
-                No clients found.
+                {emptyMessage}
               </TableCell>
             </TableRow>
           )}
         </TableBody>
       </Table>
+      </div>
     </div>
   )
 }

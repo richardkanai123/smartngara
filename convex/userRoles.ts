@@ -350,6 +350,7 @@ export const finalizeInviteRegistration = mutation({
           address,
           createdAt: now,
           updatedAt: now,
+          isWalkIn: false,
         });
       }
     }

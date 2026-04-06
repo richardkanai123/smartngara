@@ -19,12 +19,9 @@ const AdminClientsPage = async () => {
     }
 
 
-    const clients = await fetchAuthQuery(api.clients.getAllClients, {
-        limit: 10 as never,
-        offset: 0 as never,
-    } as never)
+    const clients = await fetchAuthQuery(api.clients.getAllClients)
 
-    if(!clients) {
+    if(!clients || clients.length === 0) {
         return (
             <div className="w-full flex flex-col items-center justify-center h-screen gap-4">
                 <UnAuthorised
@@ -40,7 +37,7 @@ const AdminClientsPage = async () => {
       <div className="space-y-1">
         <h1 className="text-2xl font-semibold tracking-tight">Clients</h1>
         <p className="text-xs text-muted-foreground">
-          Sort columns by header. Edit or remove clients from the row actions.
+          Search and filter by walk-in type (URL updates for sharing). Sort columns by header; edit or remove from row actions.
         </p>
       </div>
       <Suspense fallback={<div>Loading clients...</div>}>
