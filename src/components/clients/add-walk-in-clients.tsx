@@ -11,7 +11,7 @@ import { cn, validateKenyanPhoneNumber } from "@/lib/utils"
 import { useMutation } from "convex/react"
 import { api } from "@/lib/convex-api"
 import { toast } from "sonner"
-
+import { useRouter } from "next/navigation"
 const addWalkInClientSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters"),
   email: z.email("Please enter a valid email address"),
@@ -23,15 +23,13 @@ const addWalkInClientSchema = z.object({
 
 type AddWalkInClientValues = z.infer<typeof addWalkInClientSchema>
 
-const AddWalkInClientForm = ({
-  onSuccess,
-}: {
-  onSuccess?: () => void
-}) => {
+const AddWalkInClientForm = () => {
+  const router = useRouter()
   const addWalkInClient = useMutation(api.clients.addWalkInClient)
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<AddWalkInClientValues>({
     resolver: zodResolver(addWalkInClientSchema),
@@ -53,7 +51,8 @@ const AddWalkInClientForm = ({
       })
       if (result.success) {
         toast.success(result.message)
-        onSuccess?.()
+        reset()
+        router.push("/admin/clients")
       } else {
         toast.error(result.message)
       }
@@ -65,8 +64,8 @@ const AddWalkInClientForm = ({
   }
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="grid gap-4">
-      <div className="grid gap-2">
+    <form onSubmit={handleSubmit(onSubmit)} className="grid gap-2 bg-card p-4 ">
+      <div className="grid gap-1">
         <Label htmlFor="edit-name">Name</Label>
         <Input
           id="edit-name"
@@ -77,10 +76,9 @@ const AddWalkInClientForm = ({
           <p className="text-xs text-destructive">{errors.name.message}</p>
         )}
       </div>
-      <div className="grid gap-2">
+      <div className="grid gap-1">
         <Label htmlFor="edit-email">Email</Label>
         <Input
-          disabled={true}
           id="edit-email"
           type="email"
           autoComplete="email"
@@ -89,7 +87,7 @@ const AddWalkInClientForm = ({
         />
         <p className="text-xs text-muted-foreground">Email cannot be changed</p>
       </div>
-      <div className="grid gap-2">
+      <div className="grid gap-1">
         <Label htmlFor="edit-phone">Phone</Label>
         <Input
           id="edit-phone"
@@ -102,13 +100,14 @@ const AddWalkInClientForm = ({
           <p className="text-xs text-destructive">{errors.phone.message}</p>
         )}
       </div>
-      <div className="grid gap-2">
+        <div className="grid gap-1">
         <Label htmlFor="edit-address">Address</Label>
         <Input
           id="edit-address"
           aria-invalid={!!errors.address}
           {...register("address")}
         />
+        <p className="text-xs text-muted-foreground">if not provided, type n/a</p>
         {errors.address && (
           <p className="text-xs text-destructive">{errors.address.message}</p>
         )}

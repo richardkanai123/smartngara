@@ -5,6 +5,16 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  /**
+   * Space reserved for the fixed header + notch / status bar (safe area).
+   * Keep roughly in sync with `components/navigation/header.tsx`.
+   */
+  --app-header-space: calc(4.5rem + env(safe-area-inset-top, 0px));
+  /**
+   * Space reserved for the fixed app footer + device safe area (home indicator).
+   * Keep in sync with footer bar height (see `components/navigation/footer.tsx`).
+   */
+  --app-footer-space: calc(5.75rem + env(safe-area-inset-bottom, 0px));
   --background: oklch(0.9778 0.0079 286.2518);
   --foreground: oklch(0.3181 0.0355 284.2029);
   --card: oklch(1.0000 0 0);
@@ -200,6 +210,7 @@
   }
   html {
     @apply font-mono;
+    scroll-padding-top: var(--app-header-space);
   }
   button {
     @apply cursor-pointer animate-in transition-all ease-in-out duration-300;

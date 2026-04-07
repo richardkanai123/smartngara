@@ -80,15 +80,16 @@ export const couriers = defineTable({
   vehicle: v.union(v.literal("motorcycle"), v.literal("car"), v.literal("bicycle"), v.literal("other")),
   vehicleReg: v.optional(v.string()),
   status: v.union(v.literal("available"), v.literal("in-transit"), v.literal("on-delivery"),v.literal("off-duty")),
-  currentOrderId: v.optional(v.id("orders")),
-  currentClientId: v.optional(v.id("clients")),
+  currentOrders: v.optional(v.array(v.id("orders"))), //holds the current orders being handled by this courier
+  currentClientId: v.optional(v.id("clients")), //holds the current client being served by this courier
   createdAt: v.number(),
   updatedAt: v.number(),
   handledDeliveries: v.optional(v.array(v.id("deliveries"))),
 })
   .index("by_userId", ["userId"])
   .index("by_status", ["status"])
-  .index("by_handledDeliveries", ["handledDeliveries"]);
+  .index("by_handledDeliveries", ["handledDeliveries"])
+  .index("by_currentOrders", ["currentOrders"]);
 
 export const workers = defineTable({
   userId: v.string(),
@@ -96,12 +97,13 @@ export const workers = defineTable({
   email: v.string(),
   phone: v.string(),
   status: v.union(v.literal("on-duty"), v.literal("off-duty")),
-  currentOrderId: v.optional(v.id("orders")),
+  currentOrders: v.optional(v.array(v.id("orders"))), //holds the current orders being handled by this worker
   createdAt: v.number(),
   updatedAt: v.number(),
 })
   .index("by_userId", ["userId"])
-  .index("by_status", ["status"]);
+  .index("by_status", ["status"])
+  .index("by_currentOrders", ["currentOrders"]);
 
 export const racks = defineTable({
   label: v.string(),
@@ -111,17 +113,19 @@ export const racks = defineTable({
   location: v.string(),
   createdAt: v.number(),
   updatedAt: v.number(),
-  orders: v.optional(v.array(v.id("orders"))),
+  orders: v.optional(v.array(v.id("orders"))), //holds all orders handled in this rack
+  currentOrders: v.optional(v.array(v.id("orders"))), //holds the current orders being handled in this rack
   maxOrders: v.number(),
 })
   .index("by_label", ["label"])
   .index("by_status", ["status"])
-  .index("by_orders", ["orders"]);
+  .index("by_orders", ["orders"])
+  .index("by_currentOrders", ["currentOrders"]);
 
 export const orders = defineTable({
   clientId: v.id("clients"),
-  handlerId: v.id("workers"),
-  rackId: v.optional(v.array(v.id("racks"))),
+  handlerId: v.string(),
+  rackId: v.optional(v.id("racks")), // optional because it can be null when order is not in a rack
   status: v.union(v.literal("pending"), v.literal("in-transit"), v.literal("processing"), v.literal("ready-for-pickup"), v.literal("on-delivery"), v.literal("delivered"), v.literal("cancelled")),
   items: v.array(v.object({
     name: v.string(),
@@ -135,6 +139,7 @@ export const orders = defineTable({
   orderFee: v.optional(v.number()),
   createdAt: v.number(),
   updatedAt: v.number(),
+  completedAt: v.optional(v.number()),
 })
   .index("by_clientId", ["clientId"])
   .index("by_handlerId", ["handlerId"])

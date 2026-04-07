@@ -1,10 +1,11 @@
 // racks.ts : This file contains the Convex functions for managing racks.
 
-import { mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query, QueryCtx } from "./_generated/server";
 import { v } from "convex/values";
 import { authComponent } from "./auth";
-import type { Doc } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import type { Order } from "./schema";
+import { api } from "./_generated/api";
 
 // Mutation to create a rack
 export const createRack = mutation({
@@ -212,7 +213,71 @@ export const getAllOrdersForRack = query({
     if (!loggedInUserId) throw new Error("Not authenticated");
     const rack = await ctx.db.query("racks").withIndex("by_id", (q) => q.eq("_id", args.id)).first();
     if (!rack) throw new Error("Rack not found");
-    const orders = await ctx.db.query("orders").withIndex("by_rackId", (q) => q.eq("rackId", [args.id])).collect();
-    return orders as Order[];
+    const orders: Order[] = [];
+    for (const orderId of rack.orders || []) {
+      const order = await ctx.db.query("orders").withIndex("by_id", (q) => q.eq("_id", orderId)).first();
+      if (order) orders.push(order as unknown as Order);
+    }
+    return orders;
   },
+});
+
+// internal function to check rack availability
+export const internalRackAvailabilityCheck = internalQuery({
+  args: {
+    id: v.id("racks"),
+  },
+  handler: async (ctx, args): Promise<{ available: boolean, reason: string }> => {
+    const rack = await ctx.db.get(args.id);
+    if (!rack) return { available: false, reason: "Rack not found" };
+
+    if (rack.isReserved) return { available: false, reason: "Rack is reserved" };
+
+    if (rack.status !== "available") return { available: false, reason: "Rack is not available" };
+
+    // Same field as addOrderToRack / internalAddOrderToRack / getAllOrdersForRack
+    const current = rack.orders?.length ?? 0;
+    if (current >= rack.maxOrders) return { available: false, reason: "Rack is full" };
+
+    return { available: true, reason: "Rack is available" };
+  },
+})
+
+// internal function to add order to rack
+export const internalAddOrderToRack = internalMutation({
+  args: {
+    id: v.id("racks"),
+    orderId: v.id("orders"),
+  },
+  handler: async (ctx, args): Promise<{ success: boolean, reason: string, orders: number }> => {
+    const rack = await ctx.db.get(args.id);
+    if (!rack) return { success: false, reason: "Rack not found", orders: 0 };
+    const count = rack.orders?.length ?? 0;
+    // Re-check capacity in the same transaction (avoids races with concurrent createOrder)
+    if (count >= rack.maxOrders) {
+      return { success: false, reason: "Rack is full", orders: count };
+    }
+    const nextOrders = [...(rack.orders ?? []), args.orderId];
+    await ctx.db.patch(args.id, { orders: nextOrders, updatedAt: Date.now() });
+    return { success: true, reason: "Order added to rack successfully", orders: nextOrders.length };
+  },
+});
+
+
+//update rack status
+export const internalUpdateRackStatus = internalMutation({
+  args: {
+    id: v.id("racks"),
+    status: v.union(v.literal("available"), v.literal("occupied"), v.literal("maintenance"), v.literal("out-of-order")),
+  },
+  handler: async (ctx, args): Promise<{success: boolean, message: string}> => {
+    const rack = await ctx.db.query("racks").withIndex("by_id", (q) => q.eq("_id", args.id)).first();
+    if (!rack) return {success: false, message: `Rack ${args.id} not found`};
+  // check current status vs new status
+  if(rack.status === args.status) return {success: true, message: `Rack ${rack.label} status is already ${args.status}`};
+  if( rack.isReserved) return {success: false, message: `Rack ${rack.label} is reserved`};
+
+    await ctx.db.patch(args.id, { status: args.status, updatedAt: Date.now() });
+    return {success: true, message: `Rack ${rack.label} status updated to ${args.status}`};
+  }
 });

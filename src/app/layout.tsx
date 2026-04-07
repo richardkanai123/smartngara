@@ -56,12 +56,15 @@ export default function RootLayout({
         >
           <Suspense fallback={<div className="min-h-screen" />}>
             <AuthProvider>
-              .
-              <div className="w-full mb-12 ">
-                <Header />
+              <div className="flex min-h-dvh flex-col">
+                <div className="w-full shrink-0">
+                  <Header />
+                </div>
+                <main className="min-h-0 flex-1 pt-(--app-header-space) pb-(--app-footer-space)">
+                  {children}
+                </main>
+                <Footer />
               </div>
-              {children}
-              <Footer />
             </AuthProvider>
           </Suspense>
           <Toaster  position="top-center" richColors/>

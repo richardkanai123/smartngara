@@ -65,6 +65,11 @@ const AdminHeader = () => {
             href: "/admin/invoices/add",
             icon: <PlusIcon size={16} />
         },
+        {
+            label: "Clients",
+            href: "/admin/clients/add",
+            icon: <PlusIcon size={16} />
+        }
     ]
 
     const currentQuickButton = QuickButtons.find((button) => button.label === pageTitle())

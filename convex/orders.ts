@@ -1,15 +1,16 @@
 // orders.ts : This file contains the Convex functions for managing orders.
 
-import { mutation, query } from "./_generated/server";
+import { action, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { authComponent } from "./auth";
 import type { Doc, Id } from "./_generated/dataModel";
+import { api, internal } from "./_generated/api";
 
 // Mutation to create an order
 export const createOrder = mutation({
   args: {
     clientId: v.id("clients"),
-    rackId: v.optional(v.array(v.id("racks"))),
+    rackId: v.optional(v.id("racks")),
     status: v.union(
       v.literal("pending"),
       v.literal("in-transit"),
@@ -30,14 +31,29 @@ export const createOrder = mutation({
     ironingFee: v.number(),
     orderFee: v.number(),
   },
-  handler: async (ctx, args): Promise<Id<"orders">> => {
+  handler: async (ctx, args): Promise<{order: Id<"orders">, success: boolean}> => {
     const loggedInUserId = await authComponent.getAuthUser(ctx);
     if (!loggedInUserId) throw new Error("Not authenticated");
-    const worker = await ctx.db
-      .query("workers")
-      .withIndex("by_userId", (q) => q.eq("userId", loggedInUserId._id))
-      .first();
-    if (!worker) throw new Error("Worker not found");
+
+    // check if logged in user can add order
+    const userRoleData = await ctx.runQuery(api.userRoles.getUserRoleByUserId, { id: loggedInUserId._id });
+
+    const role = userRoleData?.role;
+    const canAddOrder = role ==='admin' || role ==='worker'
+
+    if(!canAddOrder) throw new Error("You are not authorized to add an order");
+
+    const client = await ctx.db.get(args.clientId);
+    if (!client) throw new Error("Client not found");
+
+    // check rack availability
+    if (args.rackId) {
+      const availability = await ctx.runQuery(internal.racks.internalRackAvailabilityCheck, {
+        id: args.rackId,
+      });
+      if (!availability.available) throw new Error(availability.reason);
+    }
+
     const order = await ctx.db.insert("orders", {
       clientId: args.clientId,
       status: args.status,
@@ -45,14 +61,30 @@ export const createOrder = mutation({
       instructions: args.instructions,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      handlerId: worker._id,
+      handlerId: loggedInUserId._id as unknown as Id<"workers">,
+      completedAt: undefined,
       isDeliveryRequired: args.isDeliveryRequired,
       ironing: args.ironing,
       ironingFee: args.ironingFee,
       orderFee: args.orderFee,
       rackId: args.rackId,
     });
-    return order;
+
+    // add order to rack
+    if (args.rackId) {
+      const result = await ctx.runMutation(internal.racks.internalAddOrderToRack, {
+        id: args.rackId,
+        orderId: order,
+      });
+      if (!result.success) throw new Error(result.reason);
+      const rackStatusResult = await ctx.runMutation(internal.racks.internalUpdateRackStatus, {
+        id: args.rackId,
+        status: "occupied",
+      });
+      if (!rackStatusResult.success) throw new Error(rackStatusResult.message);
+    }
+
+    return {order, success: true};
   },
 });
 

@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { XIcon } from "lucide-react"
-import { useEffect, useState, useTransition } from "react"
+import { Suspense, useEffect, useState, useTransition } from "react"
 import { Spinner } from "../ui/spinner"
 import { Input } from "../ui/input"
 import { useDebounce } from "use-debounce"
@@ -83,6 +83,8 @@ const ClientsFilterSearch = () => {
     walkIn !== "all" || nameFromUrl.trim() !== ""
 
   return (
+    <Suspense fallback={<Spinner className="size-4" />}>
+      
     <div className="flex w-full flex-wrap items-center gap-2">
       <Input
         className="h-8 min-w-[8rem] max-w-[14rem] flex-1 sm:w-44 sm:flex-none"
@@ -115,7 +117,7 @@ const ClientsFilterSearch = () => {
         onClick={handleClearFilters}
         disabled={isPending || !hasActiveFilters}
         className="gap-1.5"
-      >
+        >
         {isPending ? (
           <Spinner className="size-4 animate-spin" />
         ) : (
@@ -124,6 +126,7 @@ const ClientsFilterSearch = () => {
         Clear filters
       </Button>
     </div>
+        </Suspense>
   )
 }
 

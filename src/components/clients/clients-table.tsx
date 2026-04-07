@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import type { Column } from "@tanstack/react-table"
 import type { Client } from "@convex/schema"
@@ -18,12 +18,21 @@ import {
   type ColumnDef,
   flexRender,
   getCoreRowModel,
+  getPaginationRowModel,
   getSortedRowModel,
+  type PaginationState,
   type SortingState,
   useReactTable,
 } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
-import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import EditClientDialog from "./edit-client-dialog"
 import DeleteClientDialog from "./delete-client-dialog"
@@ -171,24 +180,43 @@ function buildColumns(): ColumnDef<Client>[] {
   ]
 }
 
+const DEFAULT_PAGE_SIZE = 10
+
 const ClientsTable = ({ clients }: { clients: Client[] }) => {
   const searchParams = useSearchParams()
+  const filterKey = searchParams.toString()
   const filteredClients = useMemo(
     () => filterClientsBySearchParams(clients, searchParams),
     [clients, searchParams]
   )
 
   const [sorting, setSorting] = useState<SortingState>([])
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: DEFAULT_PAGE_SIZE,
+  })
   const columns = useMemo(() => buildColumns(), [])
+
+  useEffect(() => {
+    setPagination((p) => ({ ...p, pageIndex: 0 }))
+  }, [filterKey, clients.length])
 
   const table = useReactTable({
     data: filteredClients,
     columns,
-    state: { sorting },
+    state: { sorting, pagination },
     onSortingChange: setSorting,
+    onPaginationChange: setPagination,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
   })
+
+  const rowCount = filteredClients.length
+  const { pageIndex, pageSize } = table.getState().pagination
+  const from = rowCount === 0 ? 0 : pageIndex * pageSize + 1
+  const to = Math.min((pageIndex + 1) * pageSize, rowCount)
+  const pageCount = table.getPageCount()
 
   const emptyMessage =
     clients.length > 0 && filteredClients.length === 0
@@ -267,6 +295,64 @@ const ClientsTable = ({ clients }: { clients: Client[] }) => {
           )}
         </TableBody>
       </Table>
+      {rowCount > 0 && (
+        <div className="flex flex-col gap-3 border-t border-border bg-muted/20 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-muted-foreground tabular-nums">
+            Showing {from}–{to} of {rowCount}
+          </p>
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground whitespace-nowrap">
+                Rows per page
+              </span>
+              <Select
+                value={String(pageSize)}
+                onValueChange={(v) => {
+                  table.setPageSize(Number(v))
+                  table.setPageIndex(0)
+                }}
+              >
+                <SelectTrigger className="h-8 w-[4.5rem]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+                aria-label="Previous page"
+              >
+                <ChevronLeft className="size-4" />
+              </Button>
+              <span className="min-w-[5.5rem] px-1 text-center text-xs text-muted-foreground tabular-nums">
+                Page {pageCount === 0 ? 0 : pageIndex + 1} of{" "}
+                {Math.max(1, pageCount)}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8"
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+                aria-label="Next page"
+              >
+                <ChevronRight className="size-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   )

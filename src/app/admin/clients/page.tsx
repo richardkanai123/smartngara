@@ -1,5 +1,6 @@
 import UnAuthorised from "@/components/auth/un-authorised"
 import ClientsTable from "@/components/clients/clients-table"
+import { Spinner } from "@/components/ui/spinner"
 import { fetchAuthQuery } from "@/lib/auth-server"
 import { api } from "@convex/_generated/api"
 import { Suspense } from "react"
@@ -40,7 +41,7 @@ const AdminClientsPage = async () => {
           Search and filter by walk-in type (URL updates for sharing). Sort columns by header; edit or remove from row actions.
         </p>
       </div>
-      <Suspense fallback={<div>Loading clients...</div>}>
+      <Suspense fallback={<Spinner className="size-4" />}>
       <ClientsTable clients={clients} />
       </Suspense>
     </div>
