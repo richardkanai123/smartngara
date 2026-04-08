@@ -77,14 +77,40 @@ export const createOrder = mutation({
         orderId: order,
       });
       if (!result.success) throw new Error(result.reason);
-      const rackStatusResult = await ctx.runMutation(internal.racks.internalUpdateRackStatus, {
-        id: args.rackId,
-        status: "occupied",
-      });
-      if (!rackStatusResult.success) throw new Error(rackStatusResult.message);
+      // Rack status (occupied / full) is set in internalAddOrderToRack
     }
 
     return {order, success: true};
+  },
+});
+
+/** Admin / worker: all orders with client docs, newest first */
+export const listOrdersWithClients = query({
+  args: {},
+  handler: async (
+    ctx,
+  ): Promise<{ order: Doc<"orders">; client: Doc<"clients"> | null }[]> => {
+    const loggedInUserId = await authComponent.getAuthUser(ctx);
+    if (!loggedInUserId) throw new Error("Not authenticated");
+
+    const roleDoc = await ctx.db
+      .query("userRoles")
+      .withIndex("by_userId", (q) => q.eq("userId", loggedInUserId._id))
+      .first();
+    const role = roleDoc?.role;
+    if (role !== "admin" && role !== "worker") {
+      throw new Error("Not authorized");
+    }
+
+    const orders = await ctx.db.query("orders").collect();
+    orders.sort((a, b) => b.createdAt - a.createdAt);
+
+    const out: { order: Doc<"orders">; client: Doc<"clients"> | null }[] = [];
+    for (const order of orders) {
+      const client = await ctx.db.get(order.clientId);
+      out.push({ order, client });
+    }
+    return out;
   },
 });
 

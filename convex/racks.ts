@@ -1,11 +1,11 @@
 // racks.ts : This file contains the Convex functions for managing racks.
 
-import { internalMutation, internalQuery, mutation, query, QueryCtx } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { authComponent } from "./auth";
-import type { Doc, Id } from "./_generated/dataModel";
+import type { Doc } from "./_generated/dataModel";
 import type { Order } from "./schema";
-import { api } from "./_generated/api";
+
 
 // Mutation to create a rack
 export const createRack = mutation({
@@ -62,7 +62,15 @@ export const getRackById = query({
 export const updateRackStatus = mutation({
   args: {
     id: v.id("racks"),
-    status: v.optional(v.union(v.literal("available"), v.literal("occupied"), v.literal("maintenance"), v.literal("out-of-order"))),
+    status: v.optional(
+      v.union(
+        v.literal("available"),
+        v.literal("occupied"),
+        v.literal("maintenance"),
+        v.literal("out-of-order"),
+        v.literal("full"),
+      ),
+    ),
   },
   handler: async (ctx, args): Promise<Doc<"racks">> => {
     const loggedInUserId = await authComponent.getAuthUser(ctx);
@@ -114,7 +122,15 @@ export const updateRackDetails = mutation({
     size: v.optional(v.union(v.literal("small"), v.literal("medium"), v.literal("large"))),
     location: v.optional(v.string()),
     maxOrders: v.optional(v.number()),
-    status: v.optional(v.union(v.literal("available"), v.literal("occupied"), v.literal("maintenance"), v.literal("out-of-order"))),
+    status: v.optional(
+      v.union(
+        v.literal("available"),
+        v.literal("occupied"),
+        v.literal("maintenance"),
+        v.literal("out-of-order"),
+        v.literal("full"),
+      ),
+    ),
   },
   handler: async (ctx, args): Promise<Doc<"racks">> => {
     const loggedInUserId = await authComponent.getAuthUser(ctx);
@@ -155,7 +171,11 @@ export const getAllAvailableRacks = query({
     const loggedInUserId = await authComponent.getAuthUser(ctx);
     if (!loggedInUserId) throw new Error("Not authenticated");
     const racks = await ctx.db.query("racks").withIndex("by_status", (q) => q.eq("status", "available")).collect();
-    return racks as unknown as Doc<"racks">[];
+
+    // filter to remove full / maintenance / out-of-order
+    const availableRacks = racks.filter((rack) => rack.status !== "full" && rack.status !== "maintenance" && rack.status !== "out-of-order");
+   
+    return availableRacks;
   },
 });
 
@@ -181,7 +201,21 @@ export const addOrderToRack = mutation({
     const rack = await ctx.db.query("racks").withIndex("by_id", (q) => q.eq("_id", args.id)).first();
     if (!rack) throw new Error("Rack not found");
     if ((rack.orders?.length || 0) >= rack.maxOrders) throw new Error("Rack is full");
-    const updatedRack = await ctx.db.patch(args.id, { orders: [...(rack.orders || []), args.orderId], updatedAt: Date.now() });
+    const nextOrders = [...(rack.orders || []), args.orderId];
+    const isFull = nextOrders.length >= rack.maxOrders;
+    const nextStatus =
+      rack.status === "maintenance" || rack.status === "out-of-order"
+        ? rack.status
+        : isFull
+          ? ("full" as const)
+          : nextOrders.length > 0
+            ? ("occupied" as const)
+            : rack.status;
+    const updatedRack = await ctx.db.patch(args.id, {
+      orders: nextOrders,
+      status: nextStatus,
+      updatedAt: Date.now(),
+    });
     return updatedRack as unknown as Doc<"racks">;
   },
 });
@@ -198,7 +232,22 @@ export const removeOrderFromRack = mutation({
     const rack = await ctx.db.query("racks").withIndex("by_id", (q) => q.eq("_id", args.id)).first();
     if (!rack) throw new Error("Rack not found");
     if (!rack.orders?.includes(args.orderId)) throw new Error("Order not found in rack");
-    const updatedRack = await ctx.db.patch(args.id, { orders: (rack.orders || []).filter((order) => order !== args.orderId), updatedAt: Date.now() });
+    const nextOrders = (rack.orders || []).filter((order) => order !== args.orderId);
+    let nextStatus = rack.status;
+    if (rack.status === "maintenance" || rack.status === "out-of-order") {
+      nextStatus = rack.status;
+    } else if (nextOrders.length >= rack.maxOrders) {
+      nextStatus = "full";
+    } else if (nextOrders.length > 0) {
+      nextStatus = "occupied";
+    } else {
+      nextStatus = "available";
+    }
+    const updatedRack = await ctx.db.patch(args.id, {
+      orders: nextOrders,
+      status: nextStatus,
+      updatedAt: Date.now(),
+    });
     return updatedRack as unknown as Doc<"racks">;
   },
 });
@@ -233,11 +282,18 @@ export const internalRackAvailabilityCheck = internalQuery({
 
     if (rack.isReserved) return { available: false, reason: "Rack is reserved" };
 
-    if (rack.status !== "available") return { available: false, reason: "Rack is not available" };
+    if (rack.status === "full") return { available: false, reason: "Rack is full" };
 
-    // Same field as addOrderToRack / internalAddOrderToRack / getAllOrdersForRack
-    const current = rack.orders?.length ?? 0;
-    if (current >= rack.maxOrders) return { available: false, reason: "Rack is full" };
+    const used = rack.orders?.length ?? 0;
+    if (used >= rack.maxOrders) return { available: false, reason: "Rack is full" };
+
+    // check if rack is available
+    const rackAvailability =
+      rack.status !== "out-of-order" &&
+      rack.status !== "maintenance" &&
+      rack.maxOrders > used;
+
+    if (!rackAvailability) return { available: false, reason: "Rack is not available" };
 
     return { available: true, reason: "Rack is available" };
   },
@@ -258,7 +314,20 @@ export const internalAddOrderToRack = internalMutation({
       return { success: false, reason: "Rack is full", orders: count };
     }
     const nextOrders = [...(rack.orders ?? []), args.orderId];
-    await ctx.db.patch(args.id, { orders: nextOrders, updatedAt: Date.now() });
+    const isFull = nextOrders.length >= rack.maxOrders;
+    const nextStatus =
+      rack.status === "maintenance" || rack.status === "out-of-order"
+        ? rack.status
+        : isFull
+          ? ("full" as const)
+          : nextOrders.length > 0
+            ? ("occupied" as const)
+            : rack.status;
+    await ctx.db.patch(args.id, {
+      orders: nextOrders,
+      status: nextStatus,
+      updatedAt: Date.now(),
+    });
     return { success: true, reason: "Order added to rack successfully", orders: nextOrders.length };
   },
 });
@@ -268,7 +337,13 @@ export const internalAddOrderToRack = internalMutation({
 export const internalUpdateRackStatus = internalMutation({
   args: {
     id: v.id("racks"),
-    status: v.union(v.literal("available"), v.literal("occupied"), v.literal("maintenance"), v.literal("out-of-order")),
+    status: v.union(
+      v.literal("available"),
+      v.literal("occupied"),
+      v.literal("maintenance"),
+      v.literal("out-of-order"),
+      v.literal("full"),
+    ),
   },
   handler: async (ctx, args): Promise<{success: boolean, message: string}> => {
     const rack = await ctx.db.query("racks").withIndex("by_id", (q) => q.eq("_id", args.id)).first();

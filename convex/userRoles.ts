@@ -178,7 +178,9 @@ export const adminCreateUser = mutation({
 
     // 3. Check if user already exists with this email
     // Note: "user" table comes from Better Auth component
-    const existingUser = await (ctx.db.query as any)("user")
+    // biome-ignore lint/suspicious/noExplicitAny: <Any is used to query the user table>
+            const existingUser = await (ctx.db.query as any)("user")
+      // biome-ignore lint/suspicious/noExplicitAny: <Any is used to query the user table>
       .filter((q: any) => q.eq(q.field("email"), args.email))
       .first();
 
@@ -265,7 +267,9 @@ export const getUserByEmail = internalQuery({
   args: { email: v.string() },
   handler: async (ctx, args) => {
     // Note: "user" table comes from Better Auth component
+    // biome-ignore lint/suspicious/noExplicitAny: <Any is used to query the user table>
     return await (ctx.db.query as any)("user")
+      // biome-ignore lint/suspicious/noExplicitAny: <Any is used to query the user table>
       .filter((q: any) => q.eq(q.field("email"), args.email))
       .first();
   },
@@ -644,5 +648,19 @@ export const getUserRoleByUserId = query({
       throw new Error("Role not found");
     }
     return role;
+  },
+});
+
+
+
+// gets the role of the current user
+export const getCurrentUserRole = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await authComponent.getAuthUser(ctx);
+    if (!user) throw new Error("User not found");
+    const role = await ctx.db.query('userRoles').filter(q => q.eq(q.field('userId'), user._id)).first();
+    const userRole = role?.role as "admin" | "client" | "courier" | "worker" | null;
+    return userRole;
   },
 });

@@ -108,7 +108,14 @@ export const workers = defineTable({
 export const racks = defineTable({
   label: v.string(),
   size: v.union(v.literal("small"), v.literal("medium"), v.literal("large")),
-  status: v.union(v.literal("available"), v.literal("occupied"), v.literal("maintenance"), v.literal("out-of-order")),
+  /** Lifecycle: available → occupied → full (at capacity). maintenance / out-of-order pause use; full is persisted when at maxOrders. */
+  status: v.union(
+    v.literal("available"),
+    v.literal("occupied"),
+    v.literal("maintenance"),
+    v.literal("out-of-order"),
+    v.literal("full"),
+  ),
   isReserved: v.boolean(),
   location: v.string(),
   createdAt: v.number(),

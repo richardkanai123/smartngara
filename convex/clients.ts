@@ -11,8 +11,6 @@ export const getClientById = query({
     id: v.id("clients"),
   },
   handler: async (ctx, args): Promise<Doc<"clients">> => {
-    const loggedInUserId = await authComponent.getAuthUser(ctx);
-    if (!loggedInUserId) throw new Error("Not authenticated");
     const client = await ctx.db.query("clients").withIndex("by_id", (q) => q.eq("_id", args.id)).first();
     if (!client) throw new Error("Client not found");
     return client;

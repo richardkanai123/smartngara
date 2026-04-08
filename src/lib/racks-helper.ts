@@ -5,7 +5,12 @@ type Rack = {
   _id: string;
   label: string;
   size: "small" | "medium" | "large";
-  status: "available" | "occupied" | "maintenance" | "out-of-order";
+  status:
+    | "available"
+    | "occupied"
+    | "maintenance"
+    | "out-of-order"
+    | "full";
   isReserved: boolean;
   location: string;
   createdAt: number;
@@ -18,6 +23,7 @@ export const statusColors = {
   occupied: "bg-yellow-500",
   maintenance: "bg-blue-500",
   "out-of-order": "bg-red-500",
+  full: "bg-violet-500",
 };
 
 export const getRackStatusColor = (status: Rack["status"]) => {
@@ -48,6 +54,11 @@ export const statusTileStyles: Record<
     border: "border-l-red-500",
     tint: "bg-red-500/[0.08] dark:bg-red-500/15",
     label: "text-red-800 dark:text-red-200",
+  },
+  full: {
+    border: "border-l-violet-500",
+    tint: "bg-violet-500/[0.08] dark:bg-violet-500/15",
+    label: "text-violet-800 dark:text-violet-200",
   },
 };
 

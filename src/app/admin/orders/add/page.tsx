@@ -6,9 +6,9 @@ import { Suspense } from "react"
 import { Spinner } from "@/components/ui/spinner"
 
 const AdminOrdersAddPage = async () => {
-  const myRole = await fetchAuthQuery(api.userRoles.amIAdmin)
+  const myRole = await fetchAuthQuery(api.userRoles.getMyRole)
 
-  if (!myRole) {
+  if (!myRole || (myRole !== 'admin' && myRole !== 'worker')) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center gap-4">
         <UnAuthorised
@@ -21,7 +21,7 @@ const AdminOrdersAddPage = async () => {
 
   const [clients, racks] = await Promise.all([
     fetchAuthQuery(api.clients.getAllClients),
-    fetchAuthQuery(api.racks.getAllRacks),
+    fetchAuthQuery(api.racks.getAllAvailableRacks),
   ])
 
   return (
@@ -31,7 +31,7 @@ const AdminOrdersAddPage = async () => {
           New order
         </h1>
         <p className="text-xs text-muted-foreground">
-          Client, optional racks, line items, and fees. Status is set to pending.
+         Enter order details.
         </p>
       </div>
       <Suspense fallback={<Spinner className="size-4" />}>

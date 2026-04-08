@@ -17,7 +17,7 @@ const Header = () => {
     email: data?.user?.email || null,
   }
 const loading = isPending || isRefetching && <Spinner className="size-4" />
-const userButton = data?.user ? <ProfileDropDown user={user} /> : null
+const userButton = data?.user ? <ProfileDropDown user={user} /> : <Link className="text-sm text-primary underline" href="/login">Login</Link>
 const isError= error && <ShieldWarningIcon className="size-4 text-destructive" />
 
   return (

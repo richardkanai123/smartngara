@@ -56,7 +56,6 @@ const AddOrderForm = ({ clients, racks }: AddOrderFormProps) => {
       ...racks.map((r) => ({
         value: r._id,
         label: r.label,
-        description: `${r.location} · ${r.size}`,
       })),
     ],
     [racks],
@@ -119,7 +118,7 @@ const AddOrderForm = ({ clients, racks }: AddOrderFormProps) => {
       router.push(`/admin/orders/${res.order}`)
     } catch (error) {
       const message =
-        error instanceof Error ? error.message + ". Try again later." : "Failed to create order, Try again later."
+        error instanceof Error ? `${error.message}. Try again later.` : "Failed to create order, Try again later."
       toast.error(message)
     }
   }
@@ -171,7 +170,7 @@ const AddOrderForm = ({ clients, racks }: AddOrderFormProps) => {
         </CardHeader>
         <CardContent className="space-y-2 pt-4">
           <p className="text-[0.65rem] text-muted-foreground">
-            Optional: assign at most one rack per order.
+            Assign at most one rack per order or none if you want to assign it later.
           </p>
           <Controller
             name="rackId"
@@ -182,7 +181,7 @@ const AddOrderForm = ({ clients, racks }: AddOrderFormProps) => {
                 value={field.value}
                 onValueChange={field.onChange}
                 placeholder="Choose rack"
-                searchPlaceholder="Search label or location…"
+                searchPlaceholder="Search label…"
                 emptyMessage="No rack matches."
                 aria-invalid={!!errors.rackId}
               />
@@ -271,7 +270,7 @@ const AddOrderForm = ({ clients, racks }: AddOrderFormProps) => {
         </CardHeader>
         <CardContent className="space-y-4 pt-4">
           <div className="flex flex-col gap-3">
-            <label className="flex cursor-pointer items-center gap-3">
+            <label htmlFor="ironing" className="flex cursor-pointer items-center gap-3">
               <Controller
                 name="ironing"
                 control={control}
@@ -293,7 +292,7 @@ const AddOrderForm = ({ clients, racks }: AddOrderFormProps) => {
               <span className="text-xs">Ironing service</span>
             </label>
 
-            <label className="flex cursor-pointer items-center gap-3">
+            <label htmlFor="isDeliveryRequired" className="flex cursor-pointer items-center gap-3">
               <Controller
                 name="isDeliveryRequired"
                 control={control}

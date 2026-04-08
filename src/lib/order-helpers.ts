@@ -1,72 +1,52 @@
-// order-helpers.ts : This file contains the helper functions and constants for the orders.
-import { X, Truck, Package, Loader2, CheckCircle, PauseCircle, MapPin } from "lucide-react";
+import { X, Truck, Package, Loader2, CheckCircle, PauseCircle, MapPin, LucideIcon } from "lucide-react";
 import type { Order } from "@convex/schema";
 
 // Statuses for the orders
 export const orderStatuses: Order["status"][] = [
     "pending",
-    "in-transit",
     "processing",
     "ready-for-pickup",
+    "in-transit",
     "on-delivery",
     "delivered",
     "cancelled"
 ] as const;
-// Icons for the order actions
-export const getStatusIcon = (status: Order["status"]) => {
-    switch (status) {
-        case "pending":
-            return PauseCircle;
-        case "in-transit":
-            return Truck;
-        case "processing":
-            return Loader2;
-        case "ready-for-pickup":
-            return Package;
-        case "on-delivery":
-            return MapPin;
-        case "delivered":
-            return CheckCircle;
-        case "cancelled":
-            return X;
-    }
-}
 
+// Icons mapping for O(1) lookup and exhaustive type checking
+export const statusIcons: Record<Order["status"], LucideIcon> = {
+    "pending": PauseCircle,
+    "processing": Loader2,
+    "ready-for-pickup": Package,
+    "in-transit": Truck,
+    "on-delivery": MapPin,
+    "delivered": CheckCircle,
+    "cancelled": X,
+};
 
-// actions depending on the status
-export const getActionsForStatus = (status: Order["status"]) => {
-    switch (status) {
-        case "pending":
-            return "Process";
-        case "processing":
-            return "Ready for Pickup";
-        case "ready-for-pickup":
-            return "Deliver";
-        case "on-delivery":
-            return "Complete";
-        case "delivered":
-            return "Complete";
-        case "cancelled":
-            return "Complete";
-    }
-}
+export const getStatusIcon = (status: Order["status"]) => statusIcons[status];
 
-// colors depending on the status
-export const getColorForStatus = (status: Order["status"]) => {
-    switch (status) {
-        case "pending":
-            return "bg-yellow-500";
-        case "in-transit":
-            return "bg-blue-500";
-        case "processing":
-            return "bg-green-500";
-        case "ready-for-pickup":
-            return "bg-green-500";
-        case "on-delivery":
-            return "bg-blue-500";
-        case "delivered":
-            return "bg-green-500";
-        case "cancelled":
-            return "bg-red-500";
-    }
-}
+// Actions mapping for the next step in the workflow
+export const statusActions: Record<Order["status"], string | null> = {
+    "pending": "Process",
+    "processing": "Ready for Pickup",
+    "ready-for-pickup": "Ship / Deliver",
+    "in-transit": "Out for Delivery",
+    "on-delivery": "Complete",
+    "delivered": null, // Terminal state
+    "cancelled": null, // Terminal state
+};
+
+export const getActionsForStatus = (status: Order["status"]) => statusActions[status];
+
+// Colors mapping depending on the status
+export const statusColors: Record<Order["status"], string> = {
+    "pending": "bg-yellow-500",
+    "processing": "bg-blue-500",
+    "ready-for-pickup": "bg-indigo-500",
+    "in-transit": "bg-orange-500",
+    "on-delivery": "bg-purple-500",
+    "delivered": "bg-green-500",
+    "cancelled": "bg-red-500",
+};
+
+export const getColorForStatus = (status: Order["status"]) => statusColors[status];
