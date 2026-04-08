@@ -7,7 +7,7 @@
  * Search/filters via URL (see OrdersFilterSearch).
  */
 
-import { useMemo, useState, Suspense, useEffect } from "react";
+import { useMemo, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { usePreloadedAuthQuery } from "@convex-dev/better-auth/nextjs/client";
 import { format } from "date-fns";
@@ -192,12 +192,7 @@ function buildColumns(
       cell: ({ row }) => {
         const href = `/admin/orders/${row.original.order._id}`;
         return (
-          <div
-            className="flex justify-end"
-            data-order-action
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-          >
+          <div className="flex justify-end" data-order-action>
             <Button
               type="button"
               variant="ghost"
@@ -232,7 +227,6 @@ function MobileOrderCard({
   return (
     <li
       className="cursor-pointer rounded-lg border border-border/80 bg-card/50 p-4 shadow-sm"
-      tabIndex={0}
       onClick={(e) => {
         const t = e.target as HTMLElement;
         if (t.closest("[data-order-action]")) return;
@@ -255,12 +249,7 @@ function MobileOrderCard({
             {format(new Date(order.createdAt), "MMM d, yyyy · HH:mm")}
           </p>
         </div>
-        <div
-          data-order-action
-          className="shrink-0"
-          onClick={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
-        >
+        <div data-order-action className="shrink-0">
           <Button
             type="button"
             variant="ghost"
@@ -314,12 +303,14 @@ export default function AdminOrdersTable({
     pageIndex: 0,
     pageSize: DEFAULT_PAGE_SIZE,
   });
+  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
+
+  if (filterKey !== prevFilterKey) {
+    setPrevFilterKey(filterKey);
+    setPagination((p) => ({ ...p, pageIndex: 0 }));
+  }
 
   const columns = useMemo(() => buildColumns(router), [router]);
-
-  useEffect(() => {
-    setPagination((p) => ({ ...p, pageIndex: 0 }));
-  }, [filterKey, filteredRows.length]);
 
   const table = useReactTable({
     data: filteredRows,
@@ -403,9 +394,8 @@ export default function AdminOrdersTable({
 
       {/* Desktop: horizontal scroll keeps column widths; table can grow with viewport */}
       <div className="hidden md:block">
-        <div
+        <section
           className="w-full overflow-x-auto rounded-xl border border-border/80 bg-card/40 shadow-sm [-webkit-overflow-scrolling:touch]"
-          role="region"
           aria-label="Orders table"
         >
           <Table className="w-full min-w-[52rem] table-auto">
@@ -474,7 +464,7 @@ export default function AdminOrdersTable({
               })}
             </TableBody>
           </Table>
-        </div>
+        </section>
       </div>
 
       {rowCount > 0 && (
