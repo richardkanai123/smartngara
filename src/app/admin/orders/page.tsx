@@ -47,7 +47,7 @@ export default async function AdminOrdersPage() {
 
   return (
     <div className="flex min-h-[50vh] w-full flex-col">
-      <header className="w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <header className="w-full bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/80">
         <div className="w-full px-4 py-5 md:px-4">
           <div className="min-w-0 space-y-1.5">
             <h1 className="font-semibold text-2xl tracking-tight md:text-3xl">

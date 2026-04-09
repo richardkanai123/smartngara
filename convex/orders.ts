@@ -1,6 +1,6 @@
 // orders.ts : This file contains the Convex functions for managing orders.
 
-import { action, mutation, query } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { authComponent } from "./auth";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -61,7 +61,7 @@ export const createOrder = mutation({
       instructions: args.instructions,
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      handlerId: loggedInUserId._id as unknown as Id<"workers">,
+      handlerId: loggedInUserId._id,
       completedAt: undefined,
       isDeliveryRequired: args.isDeliveryRequired,
       ironing: args.ironing,
@@ -191,6 +191,7 @@ export const updateOrderStatus = mutation({
     status: v.union(
       v.literal("pending"),
       v.literal("in-transit"),
+      v.literal("processing"),
       v.literal("ready-for-pickup"),
       v.literal("on-delivery"),
       v.literal("delivered"),

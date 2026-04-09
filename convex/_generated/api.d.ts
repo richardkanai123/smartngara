@@ -20,6 +20,7 @@ import type * as orders from "../orders.js";
 import type * as racks from "../racks.js";
 import type * as transactions from "../transactions.js";
 import type * as userRoles from "../userRoles.js";
+import type * as workers from "../workers.js";
 
 import type {
   ApiFromModules,
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   racks: typeof racks;
   transactions: typeof transactions;
   userRoles: typeof userRoles;
+  workers: typeof workers;
 }>;
 
 /**

@@ -7,7 +7,6 @@ import { getActionsForStatus } from '@/lib/order-helpers';
 const OrderButtons = ({orderID, status,}: {orderID: string, status: Order["status"]}) => {
 
     const orderAction = getActionsForStatus(status);
-    console.log(orderID);
 
   return (
     <div className="flex gap-2">

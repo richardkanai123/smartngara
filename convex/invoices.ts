@@ -45,6 +45,22 @@ export const createInvoice = mutation({
   }
 });
 
+/** First invoice linked to an order, if any. */
+export const getInvoiceByOrderId = query({
+  args: {
+    orderId: v.id("orders"),
+  },
+  handler: async (ctx, args): Promise<Doc<"invoices"> | null> => {
+    const loggedInUserId = await authComponent.getAuthUser(ctx);
+    if (!loggedInUserId) throw new Error("Not authenticated");
+    const invoice = await ctx.db
+      .query("invoices")
+      .withIndex("by_orderId", (q) => q.eq("orderId", args.orderId))
+      .first();
+    return invoice ?? null;
+  },
+});
+
 // get invoice by id
 export const getInvoiceById = query({
   args: {
