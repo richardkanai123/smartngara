@@ -6,9 +6,9 @@ import { api } from "@convex/_generated/api"
 import { Suspense } from "react"
 
 const AdminClientsPage = async () => {
-    const myRole = await fetchAuthQuery(api.userRoles.amIAdmin)
+    const myRole = await fetchAuthQuery(api.userRoles.getCurrentUserRole)
 
-    if(!myRole ) {
+    if(!myRole || myRole !== "admin" && myRole !== "worker") {
     return (
         <div className="w-full flex flex-col items-center justify-center h-screen gap-4">
         <UnAuthorised

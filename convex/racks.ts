@@ -356,3 +356,29 @@ export const internalUpdateRackStatus = internalMutation({
     return {success: true, message: `Rack ${rack.label} status updated to ${args.status}`};
   }
 });
+
+// internal remove order from rack
+export const internalRemoveOrderFromRack = internalMutation({
+  args: {
+    id: v.id("racks"),
+    orderId: v.id("orders"),
+  },
+  handler: async (ctx, args): Promise<{success: boolean, message: string}> => {
+    const rack = await ctx.db.query("racks").withIndex("by_id", (q) => q.eq("_id", args.id)).first();
+    if (!rack) return {success: false, message: `Rack not found`};
+    if (!rack.orders?.includes(args.orderId)) return {success: false, message: `Order not found in rack`};
+    const nextOrders = (rack.orders || []).filter((order) => order !== args.orderId);
+    let nextStatus = rack.status;
+    if (rack.status === "maintenance" || rack.status === "out-of-order") {
+      nextStatus = rack.status;
+    } else if (nextOrders.length >= rack.maxOrders) {
+      nextStatus = "full";
+    } else if (nextOrders.length > 0) {
+      nextStatus = "occupied";
+    } else {
+      nextStatus = "available";
+    }
+    await ctx.db.patch(args.id, { orders: nextOrders, status: nextStatus, updatedAt: Date.now() });
+    return {success: true, message: `Order removed from rack successfully`};
+  },
+});

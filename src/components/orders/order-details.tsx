@@ -10,6 +10,7 @@ import OrderDetailsClient from "./order-details-client-card";
 import OrderHandlerCard from "./order-handler-card";
 import OrderDetailsDeliveryCard from "./order-details-delivery-card";
 import OrderDetailsRackCard from "./order-details-rack-card";
+import OrderDetailsCancellationCard from "./order-details-cancellation-card";
 import { OrderDetailsFeesCard } from "./order-details-fees-card";
 import { Suspense } from "react";
 import { Spinner } from "../ui/spinner";
@@ -33,6 +34,9 @@ const OrderDetails = async ({ orderId }: { orderId: string }) => {
     completedAt,
     deliveryId,
     createdAt,
+    cancelledAt,
+    cancelledBy,
+    cancelledReason,
   } = order;
 
   const id = orderId as Id<"orders">;
@@ -50,7 +54,7 @@ const OrderDetails = async ({ orderId }: { orderId: string }) => {
         </div>
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
           <OrderStatusBadge status={status} />
-          <OrderButtons orderID={orderId} status={status} />
+          <OrderButtons orderId={id} status={status} />
         </div>
       </header>
 
@@ -75,6 +79,14 @@ const OrderDetails = async ({ orderId }: { orderId: string }) => {
           </div>
 
           <aside className="flex flex-col gap-6 lg:col-span-1">
+          <Suspense fallback={<Spinner className="size-4" />}>
+              <OrderDetailsCancellationCard
+                status={status}
+                cancelledAt={cancelledAt}
+                cancelledReason={cancelledReason}
+                cancelledBy={cancelledBy}
+              />
+            </Suspense>
             <Suspense fallback={<Spinner className="size-4" />}>
             <OrderDetailsClient clientId={clientId} />
             </Suspense>
@@ -87,6 +99,7 @@ const OrderDetails = async ({ orderId }: { orderId: string }) => {
             <Suspense fallback={<Spinner className="size-4" />}>
             <OrderDetailsRackCard rackId={rackId} />
             </Suspense>
+           
           </aside>
         </div>
       </Suspense>

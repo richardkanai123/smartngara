@@ -218,20 +218,44 @@ export const updateOrderStatus = mutation({
 export const cancelOrder = mutation({
   args: {
     id: v.id("orders"),
+    reason: v.optional(v.string()),
   },
-  handler: async (ctx, args): Promise<Doc<"orders">> => {
-    const loggedInUserId = await authComponent.getAuthUser(ctx);
-    if (!loggedInUserId) throw new Error("Not authenticated");
+  handler: async (ctx, args): Promise<{success: boolean, message: string}> => {
+    const role = await ctx.runQuery(api.userRoles.getCurrentUserRole, {});
+    if (!role) throw new Error("You are not authenticated");
+    if (role !== "admin" && role !== "worker") {
+      console.log( `${role} is not authorized to cancel an order`);
+      throw new Error("You are not authorized to cancel an order");
+    }
     const order = await ctx.db
       .query("orders")
       .withIndex("by_id", (q) => q.eq("_id", args.id))
       .first();
     if (!order) throw new Error("Order not found");
-    const updatedOrder = (await ctx.db.patch(args.id, {
+   
+    // remove order from rack
+    if (order.rackId) {
+      const result = await ctx.runMutation(internal.racks.internalRemoveOrderFromRack, {
+        id: order.rackId,
+        orderId: order._id,
+      });
+      if (!result.success) throw new Error(result.message);
+    }
+
+
+    const currentUser = await authComponent.getAuthUser(ctx);
+    const userName = currentUser?.username || currentUser?.displayUsername;
+
+    await ctx.db.patch(args.id, {
+      cancelledBy: userName as string,
+      rackId: undefined,
       status: "cancelled",
+      cancelledAt: Date.now(),
+      cancelledReason: args.reason,
       updatedAt: Date.now(),
-    })) as unknown as Doc<"orders">;
-    return updatedOrder;
+    });
+    console.log( `Order ${args.id} cancelled and removed from rack successfully by ${role}`);
+    return {success: true, message: "Order cancelled and removed from rack successfully"};
   },
 });
 

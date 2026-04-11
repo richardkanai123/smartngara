@@ -147,6 +147,9 @@ export const orders = defineTable({
   createdAt: v.number(),
   updatedAt: v.number(),
   completedAt: v.optional(v.number()),
+  cancelledAt: v.optional(v.number()),
+  cancelledBy: v.optional(v.string()),//worker name or admin name
+  cancelledReason: v.optional(v.string()),
 })
   .index("by_clientId", ["clientId"])
   .index("by_handlerId", ["handlerId"])

@@ -1,6 +1,7 @@
 import { fetchAuthQuery } from "@/lib/auth-server"
 import { api } from "@convex/_generated/api"
 import AdminTabs from "./admin-tabs"
+import WorkerTabs from "./worker-tabs"
 
 
 const HomeTabs = async () => {
@@ -27,11 +28,7 @@ const HomeTabs = async () => {
     }
 
     if (role === 'worker') {
-      return (
-        <div className="w-full p-2 sm:p-3 md:p-4">
-          <p className="text-sm sm:text-base text-muted-foreground">Worker Tabs</p>
-        </div>
-      )
+      return <WorkerTabs />
     }
 
   return (
