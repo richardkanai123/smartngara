@@ -198,19 +198,23 @@ export const updateOrderStatus = mutation({
       v.literal("cancelled"),
     ),
   },
-  handler: async (ctx, args): Promise<Doc<"orders">> => {
-    const loggedInUserId = await authComponent.getAuthUser(ctx);
-    if (!loggedInUserId) throw new Error("Not authenticated");
+  handler: async (ctx, args): Promise<{success: boolean, message: string}> => {
+    const role = await ctx.runQuery(api.userRoles.getCurrentUserRole, {});
+    if (!role) throw new Error("You are not authenticated");
+    if (role === 'client') {
+      return {success: false, message: "You are not authorized to update order status"};
+    }
     const order = await ctx.db
       .query("orders")
       .withIndex("by_id", (q) => q.eq("_id", args.id))
       .first();
     if (!order) throw new Error("Order not found");
-    const updatedOrder = await ctx.db.patch(args.id, {
+     await ctx.db.patch(args.id, {
       status: args.status,
       updatedAt: Date.now(),
     });
-    return updatedOrder as unknown as Doc<"orders">;
+    const slicedId = args.id.slice(0, 5);
+    return {success: true, message: `Order ${slicedId} status updated to ${args.status} successfully`};
   },
 });
 
@@ -264,17 +268,42 @@ export const deleteOrder = mutation({
   args: {
     id: v.id("orders"),
   },
-  handler: async (ctx, args): Promise<string> => {
-    const loggedInUserId = await authComponent.getAuthUser(ctx);
-    if (!loggedInUserId) throw new Error("Not authenticated");
-    const order = await ctx.db
-      .query("orders")
-      .withIndex("by_id", (q) => q.eq("_id", args.id))
-      .first();
-    if (!order) throw new Error("Order not found");
+  handler: async (ctx, args): Promise<{success: boolean, message: string}> => {
+    const role = await ctx.runQuery(api.userRoles.getCurrentUserRole, {});
+    if (!role) throw new Error("You are not authenticated");
+    if (role !== "admin") {
+      return {success: false, message: "Only admins can delete orders"};
+    }
     await ctx.db.delete(args.id);
-    return "Order deleted successfully";
+    return {success: true, message: "Order deleted successfully"};
   },
 });
 
+// Process an order
+export const processOrder = mutation({
+  args: {
+    id: v.id("orders"),
+  },
+  handler: async (ctx, args): Promise<{success: boolean, message: string}> => {
+    const loggedInUser= await authComponent.getAuthUser(ctx);
+    if (!loggedInUser) throw new Error("Not authenticated");
+    const userRole = await ctx.runQuery(api.userRoles.getCurrentUserRole, {});
+    if (!userRole) throw new Error("You are not authenticated");
+      if (userRole !== "admin" && userRole !== "worker") {
+       console.log(`Unauthorized user tried to process an order, role: ${userRole}`);
+       return {success: false, message: "You are not authorized to process an order"};
+    }
+    const order = await ctx.db.query("orders").withIndex("by_id", (q) => q.eq("_id", args.id)).first();
+    if (!order) throw new Error("Order not found");
+    const isProcessable = order.status === "pending"
+    if (!isProcessable) {
+      return {success: false, message: `This order is ${order.status}, it must be pending to be processed`};
+    }
+    await ctx.db.patch(args.id, {
+      status: "processing",
+      updatedAt: Date.now(),
+    });
+    return {success: true, message: "Order processed successfully"};
+  },
+});
 

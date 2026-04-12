@@ -3,42 +3,41 @@ import { internalMutation, mutation, query } from "./_generated/server";
 import { authComponent } from "./auth";
 import type { Doc } from "./_generated/dataModel";
 import { v } from "convex/values";
+import { api } from "./_generated/api";
 
-const deliveryFields = {
-  orderId: v.id("orders"),
-  pickupBy: v.id("couriers"),
-  deliveryBy: v.id("couriers"),
-  pickupAddress: v.optional(v.string()),
-  deliveryAddress: v.string(),
-  pickupDateTime: v.optional(v.number()),
-  deliveryDateTime: v.optional(v.number()),
-  deliveryFee: v.optional(v.number()),
-  status: v.union(v.literal("pending"), v.literal("in-transit"), v.literal("on-delivery"), v.literal("delivered"), v.literal("cancelled")),
-} as const;
-
-const deliveryDocValidator = v.object({
-  _id: v.id("deliveries"),
-  _creationTime: v.number(),
-  orderId: v.id("orders"),
-  pickupBy: v.id("couriers"),
-  deliveryBy: v.id("couriers"),
-  pickupAddress: v.optional(v.string()),
-  deliveryAddress: v.optional(v.string()),
-  pickupDateTime: v.optional(v.number()),
-  deliveryDateTime: v.optional(v.number()),
-  deliveryFee: v.optional(v.number()),
-  status: v.union(v.literal("pending"), v.literal("in-transit"), v.literal("on-delivery"), v.literal("delivered"), v.literal("cancelled")),
-});
-
-// Create a delivery
+// create a new delivery
 export const createDelivery = mutation({
-  args: deliveryFields,
-  returns: deliveryDocValidator,
-  handler: async (ctx, args): Promise<Doc<"deliveries">> => {
-    const loggedInUserId = await authComponent.getAuthUser(ctx);
-    if (!loggedInUserId) throw new Error("Not authenticated");
-    const delivery = await ctx.db.insert("deliveries", {
+  args: {
+    orderId: v.id("orders"),
+    type: v.union(v.literal("pickup"), v.literal("delivery")),
+    pickupBy: v.optional(v.id("couriers")),
+    deliveryBy: v.id("couriers"),
+    pickupAddress: v.optional(v.string()),
+    deliveryAddress: v.optional(v.string()),
+    pickupDateTime: v.optional(v.number()),
+    deliveryDateTime: v.optional(v.number()),
+    deliveryFee: v.optional(v.number()),
+  },
+  handler: async (ctx, args): Promise<{success: boolean, message: string}> => {
+    const role = await ctx.runQuery(api.userRoles.getCurrentUserRole, {});
+    if (!role) throw new Error("You are not authenticated");
+    if (role !== "admin" && role !== "worker") {
+      return {success: false, message: "You are not authorized to create a delivery"};
+    }
+    const order = await ctx.db.get(args.orderId);
+    if (!order) throw new Error("Order not found");
+    if (order.status !== "ready-for-pickup") {
+      return {success: false, message: "Order is not ready for pickup"};
+    }
+    if(!order.isDeliveryRequired) {
+      return {success: false, message: "Delivery is not required for this order"};
+    }
+    if(order.deliveryId) {
+      return {success: false, message: "Delivery already exists for this order"};
+    }
+    await ctx.db.insert("deliveries", {
       orderId: args.orderId,
+      type: args.type,
       pickupBy: args.pickupBy,
       deliveryBy: args.deliveryBy,
       pickupAddress: args.pickupAddress,
@@ -46,45 +45,10 @@ export const createDelivery = mutation({
       pickupDateTime: args.pickupDateTime,
       deliveryDateTime: args.deliveryDateTime,
       deliveryFee: args.deliveryFee,
-      status: args.status,
+      status: "pending",
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
-    return delivery as unknown as Doc<"deliveries">;
-  },
-});
-
-// Get a delivery by id
-export const getDeliveryById = query({
-  args: {
-    id: v.id("deliveries"),
-  },
-  returns: deliveryDocValidator,
-  handler: async (ctx, args): Promise<Doc<"deliveries">> => {
-    const loggedInUserId = await authComponent.getAuthUser(ctx);
-    if (!loggedInUserId) throw new Error("Not authenticated");
-    const delivery = await ctx.db.query("deliveries").withIndex("by_id", (q) => q.eq("_id", args.id)).first();
-    if (!delivery) throw new Error("Delivery not found");
-    return delivery as unknown as Doc<"deliveries">;
-  },
-});
-
-
-// update delivery time and status internally
-export const updateDeliveryTimeAndStatusInternally = internalMutation({
-  args: {
-    id: v.id("deliveries"),
-    deliveryDateTime: v.optional(v.number()),
-    status: v.union(v.literal("pending"), v.literal("in-transit"), v.literal("on-delivery"), v.literal("delivered"), v.literal("cancelled")),
-  },
-  handler: async (ctx, args): Promise<Doc<"deliveries">> => {
-    const delivery = await ctx.db.query("deliveries").withIndex("by_id", (q) => q.eq("_id", args.id)).first();
-    if (!delivery) throw new Error("Delivery not found");
-    const updatedDelivery = await ctx.db.patch(args.id, {
-      deliveryDateTime: args.deliveryDateTime ?? delivery.deliveryDateTime,
-      status: args.status ?? delivery.status,
-      updatedAt: Date.now(),
-    });
-    return updatedDelivery as unknown as Doc<"deliveries">;
+    return {success: true, message: "Delivery created successfully"};
   },
 });

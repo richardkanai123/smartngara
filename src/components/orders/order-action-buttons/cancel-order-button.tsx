@@ -20,6 +20,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { XIcon } from "lucide-react";
 type CancelOrderButtonProps = {
   orderId: Id<"orders">;
   status: Order["status"];
@@ -76,12 +78,12 @@ const CancelOrderButton = ({ orderId, status }: CancelOrderButtonProps) => {
     });
   };
 
-  if (status === "cancelled" || status === "delivered") return null;
+  if (status === "cancelled" || status === "delivered" || status === "ready-for-pickup") return null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger>
-        <Button variant="destructive">Cancel</Button>
+      <DialogTrigger className={cn('bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40 px-2 py-1 text-xs ring-1 ring-destructive')}>
+        <XIcon className="size-4 fill-destructive inline-block mr-1 align-middle" /> Cancel
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

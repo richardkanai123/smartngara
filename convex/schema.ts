@@ -159,14 +159,15 @@ export const orders = defineTable({
 
 export const deliveries = defineTable({
   orderId: v.id("orders"),
-  pickupBy: v.id("couriers"),
+  type: v.union(v.literal("pickup"), v.literal("delivery")),
+  pickupBy: v.optional(v.id("couriers")),
   deliveryBy: v.id("couriers"),
   pickupAddress: v.optional(v.string()),
   deliveryAddress: v.optional(v.string()),
   pickupDateTime: v.optional(v.number()),
   deliveryDateTime: v.optional(v.number()),
   deliveryFee: v.optional(v.number()),
-  status: v.union(v.literal("pending"), v.literal("in-transit"), v.literal("on-delivery"), v.literal("delivered"), v.literal("cancelled")),
+  status: v.union(v.literal("pending"), v.literal("picking-up"), v.literal("delivering"), v.literal("delivered"), v.literal("cancelled")),
   createdAt: v.number(),
   updatedAt: v.number(),
 })
