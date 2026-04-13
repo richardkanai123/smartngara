@@ -263,7 +263,7 @@ export const getAllOrdersForRack = query({
     const rack = await ctx.db.query("racks").withIndex("by_id", (q) => q.eq("_id", args.id)).first();
     if (!rack) throw new Error("Rack not found");
     const orders: Order[] = [];
-    for (const orderId of rack.orders || []) {
+    for (const orderId of rack.currentOrders || []) {
       const order = await ctx.db.query("orders").withIndex("by_id", (q) => q.eq("_id", orderId)).first();
       if (order) orders.push(order as unknown as Order);
     }
@@ -285,13 +285,8 @@ export const internalRackAvailabilityCheck = internalQuery({
     if (rack.status === "full") return { available: false, reason: "Rack is full" };
 
     const used = rack.orders?.length ?? 0;
-    if (used >= rack.maxOrders) return { available: false, reason: "Rack is full" };
-
     // check if rack is available
-    const rackAvailability =
-      rack.status !== "out-of-order" &&
-      rack.status !== "maintenance" &&
-      rack.maxOrders > used;
+    const rackAvailability =((rack.status !== "out-of-order" && rack.status !=="maintenance" ) && rack.maxOrders >= (rack.currentOrders?.length ?? 0));
 
     if (!rackAvailability) return { available: false, reason: "Rack is not available" };
 

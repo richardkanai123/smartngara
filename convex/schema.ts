@@ -81,7 +81,6 @@ export const couriers = defineTable({
   vehicleReg: v.optional(v.string()),
   status: v.union(v.literal("available"), v.literal("in-transit"), v.literal("on-delivery"),v.literal("off-duty")),
   currentOrders: v.optional(v.array(v.id("orders"))), //holds the current orders being handled by this courier
-  currentClientId: v.optional(v.id("clients")), //holds the current client being served by this courier
   createdAt: v.number(),
   updatedAt: v.number(),
   handledDeliveries: v.optional(v.array(v.id("deliveries"))),
@@ -167,7 +166,7 @@ export const deliveries = defineTable({
   pickupDateTime: v.optional(v.number()),
   deliveryDateTime: v.optional(v.number()),
   deliveryFee: v.optional(v.number()),
-  status: v.union(v.literal("pending"), v.literal("picking-up"), v.literal("delivering"), v.literal("delivered"), v.literal("cancelled")),
+  status: v.union(v.literal("pending"), v.literal("picking-up"), v.literal("delivering"), v.literal("completed"), v.literal("cancelled")),
   createdAt: v.number(),
   updatedAt: v.number(),
 })
