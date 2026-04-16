@@ -209,6 +209,20 @@ export const transactions = defineTable({
   .index("by_status", ["status"]);
 
 
+  // wallet
+  export const wallets = defineTable({
+    userId: v.string(),
+    balance: v.number(),
+    transactions: v.optional(v.array(v.id("transactions"))),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    lastTransactionId: v.optional(v.id("transactions")),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_balance", ["balance"])
+    .index("by_transactions", ["transactions"])
+    .index("by_lastTransactionId", ["lastTransactionId"]);  
+
 /**
  * Schema Definition
  */
@@ -224,6 +238,7 @@ export default defineSchema({
   racks,
   couriers,
   workers,
+  wallets,
 });
 
 /**

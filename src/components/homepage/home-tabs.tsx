@@ -2,6 +2,8 @@ import { fetchAuthQuery } from "@/lib/auth-server"
 import { api } from "@convex/_generated/api"
 import AdminTabs from "./admin-tabs"
 import WorkerTabs from "./worker-tabs"
+import ClientTabs from "./client-tabs"
+import CourierTabs from "./courier-tabs"
 
 
 const HomeTabs = async () => {
@@ -21,9 +23,7 @@ const HomeTabs = async () => {
 
     if (role === 'courier') {
       return (
-        <div className="w-full p-2 sm:p-3 md:p-4">
-          <p className="text-sm sm:text-base text-muted-foreground">Courier Tabs</p>
-        </div>
+        <CourierTabs />
       )
     }
 
@@ -31,11 +31,9 @@ const HomeTabs = async () => {
       return <WorkerTabs />
     }
 
-  return (
-   <div className='w-full p-2 sm:p-3 md:p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 max-w-7xl mx-auto'>
-    <p className="text-sm sm:text-base text-muted-foreground col-span-full">Client Tabs</p>
-   </div>
-  )
+    if (role === 'client') {
+      return <ClientTabs />
+    }
 }
 
 export default HomeTabs

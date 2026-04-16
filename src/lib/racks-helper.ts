@@ -83,3 +83,16 @@ export const rackSizeLabel: Record<Rack["size"], string> = {
   medium: "Medium",
   large: "Large",
 };
+
+export function formatRackStatusLabel(s: Rack["status"]) {
+  return s.replace(/-/g, " ");
+}
+
+/** Order shown in status pickers (lifecycle-friendly). */
+export const RACK_STATUS_OPTIONS: Rack["status"][] = [
+  "available",
+  "occupied",
+  "full",
+  "maintenance",
+  "out-of-order",
+];

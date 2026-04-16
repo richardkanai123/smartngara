@@ -1,13 +1,25 @@
-// racks.ts : This file contains the Convex functions for managing racks.
-
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { authComponent } from "./auth";
 import type { Doc } from "./_generated/dataModel";
 import type { Order } from "./schema";
+import { api } from "./_generated/api";
 
+type RackStatus = Doc<"racks">["status"];
 
-// Mutation to create a rack
+function deriveRackStatus(
+  currentStatus: RackStatus,
+  currentOrderCount: number,
+  maxOrders: number,
+): RackStatus {
+  if (currentStatus === "maintenance" || currentStatus === "out-of-order") {
+    return currentStatus;
+  }
+  if (currentOrderCount >= maxOrders) return "full";
+  if (currentOrderCount > 0) return "occupied";
+  return "available";
+}
+
+// Create a rack (admin only)
 export const createRack = mutation({
   args: {
     label: v.string(),
@@ -15,105 +27,125 @@ export const createRack = mutation({
     location: v.string(),
     maxOrders: v.number(),
   },
-  handler: async (ctx, args): Promise<Doc<"racks">> => {
-    const loggedInUserId = await authComponent.getAuthUser(ctx);
-    if (!loggedInUserId) throw new Error("Not authenticated");
-    const rack = await ctx.db.insert("racks", {
+  handler: async (ctx, args): Promise<{ success: boolean; message: string }> => {
+    const role = await ctx.runQuery(api.userRoles.getCurrentUserRole, {});
+    if (!role) throw new Error("You are not authenticated");
+    if (role !== "admin") {
+      return { success: false, message: "Only admins can create racks" };
+    }
+
+    const now = Date.now();
+    await ctx.db.insert("racks", {
       label: args.label,
       size: args.size,
       status: "available",
-      isReserved: false,  
+      isReserved: false,
       location: args.location,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      createdAt: now,
+      updatedAt: now,
       maxOrders: args.maxOrders,
     });
-    return rack as unknown as Doc<"racks">;
+    return { success: true, message: "Rack created successfully" };
   },
 });
 
-// Query to get all racks
+// Get all racks (admin/worker)
 export const getAllRacks = query({
-    handler: async (ctx): Promise<Doc<"racks">[]> => {
-        const loggedInUserId = await authComponent.getAuthUser(ctx);
-        if (!loggedInUserId) throw new Error("Not authenticated");
-    const racks = await ctx.db.query("racks").collect();
-    if (!racks) throw new Error("No racks found");
-    return racks as unknown as Doc<"racks">[];
+  args: {},
+  handler: async (ctx): Promise<Doc<"racks">[]> => {
+    const role = await ctx.runQuery(api.userRoles.getCurrentUserRole, {});
+    if (!role) throw new Error("You are not authenticated");
+    if (role === "client" || role === "courier") {
+      return [];
+    }
+
+    return await ctx.db.query("racks").order("desc").collect();
   },
 });
 
-// Query to get a rack by id
+// Get a rack by ID (admin/worker)
 export const getRackById = query({
   args: {
     id: v.id("racks"),
   },
-  handler: async (ctx, args): Promise<Doc<"racks">> => {
-    const loggedInUserId = await authComponent.getAuthUser(ctx);
-    if (!loggedInUserId) throw new Error("Not authenticated");
-    const rack = await ctx.db.query("racks").withIndex("by_id", (q) => q.eq("_id", args.id)).first();
+  handler: async (ctx, args): Promise<Doc<"racks"> | null> => {
+    const role = await ctx.runQuery(api.userRoles.getCurrentUserRole, {});
+    if (!role) throw new Error("You are not authenticated");
+    if (role === "client" || role === "courier") {
+      return null;
+    }
+
+    const rack = await ctx.db.get(args.id);
     if (!rack) throw new Error("Rack not found");
-    return rack as unknown as Doc<"racks">;
+    return rack;
   },
 });
 
+const rackStatusValue = v.union(
+  v.literal("available"),
+  v.literal("occupied"),
+  v.literal("maintenance"),
+  v.literal("out-of-order"),
+  v.literal("full"),
+);
 
-// update rack status
+/** Active orders on the rack; used for occupancy checks. */
+function getRackOccupancyCount(rack: Doc<"racks">): number {
+  return rack.currentOrders?.length ?? 0;
+}
+
+/**
+ * Updates rack operational status only. Blocks changes while the rack has active orders.
+ * Use {@link updateRackDetails} for label, location, size, reservation, and maxOrders.
+ */
 export const updateRackStatus = mutation({
   args: {
     id: v.id("racks"),
-    status: v.optional(
-      v.union(
-        v.literal("available"),
-        v.literal("occupied"),
-        v.literal("maintenance"),
-        v.literal("out-of-order"),
-        v.literal("full"),
-      ),
-    ),
+    status: rackStatusValue,
   },
-  handler: async (ctx, args): Promise<Doc<"racks">> => {
-    const loggedInUserId = await authComponent.getAuthUser(ctx);
-    if (!loggedInUserId) throw new Error("Not authenticated");
-    const rack = await ctx.db.query("racks").withIndex("by_id", (q) => q.eq("_id", args.id)).first();
+  handler: async (ctx, args): Promise<{ success: boolean; message: string }> => {
+    const role = await ctx.runQuery(api.userRoles.getCurrentUserRole, {});
+    if (!role) throw new Error("You are not authenticated");
+    if (role !== "admin" && role !== "worker") {
+      return { success: false, message: "You are not authorized to update rack status" };
+    }
+
+    const rack = await ctx.db.get(args.id);
     if (!rack) throw new Error("Rack not found");
-    const updatedRack = await ctx.db.patch(args.id, { status: args.status ?? rack.status, updatedAt: Date.now() });
-    return updatedRack as unknown as Doc<"racks">;
+
+    const isFull = rack.maxOrders===rack.currentOrders?.length;
+    const isOccupied = (rack.currentOrders?.length ?? 0) > 0;
+
+    if(args.status === 'occupied' && !isOccupied) {
+      return {
+        success: false,
+        message: "Cannot change status to occupied while the rack has no active orders",
+      };
+    }
+
+    if (!isFull && args.status === "full") {
+      return {
+        success: false,
+        message: "Rack is not full",
+      };
+    }
+
+    if (rack.status === args.status) {
+      return {
+        success: false,
+        message: `Rack ${rack.label} is already ${args.status}`,
+      };
+    }
+
+    await ctx.db.patch(args.id, {
+      status: args.status,
+      updatedAt: Date.now(),
+    });
+    return { success: true, message: "Rack status updated successfully" };
   },
 });
 
-// reserve rack
-export const reserveRack = mutation({
-  args: {
-    id: v.id("racks"),
-  },
-  handler: async (ctx, args): Promise<Doc<"racks">> => {
-    const loggedInUserId = await authComponent.getAuthUser(ctx);
-    if (!loggedInUserId) throw new Error("Not authenticated");
-    const rack = await ctx.db.query("racks").withIndex("by_id", (q) => q.eq("_id", args.id)).first();
-    if (!rack) throw new Error("Rack not found");
-    const updatedRack = await ctx.db.patch(args.id, { isReserved: true, updatedAt: Date.now() });
-    return updatedRack as unknown as Doc<"racks">;
-  },
-});
-
-// unreserve rack
-export const unreserveRack = mutation({
-  args: {
-    id: v.id("racks"),
-  },
-  handler: async (ctx, args): Promise<Doc<"racks">> => {
-    const loggedInUserId = await authComponent.getAuthUser(ctx);
-    if (!loggedInUserId) throw new Error("Not authenticated");
-    const rack = await ctx.db.query("racks").withIndex("by_id", (q) => q.eq("_id", args.id)).first();
-    if (!rack) throw new Error("Rack not found");
-    if (!rack.isReserved) throw new Error("Rack is not reserved");
-    const updatedRack = await ctx.db.patch(args.id, { isReserved: false, updatedAt: Date.now() });
-    return updatedRack as unknown as Doc<"racks">;
-  },
-});
-
-// update rack details
+// Update rack details (admin/worker) — does not set `status`; use updateRackStatus
 export const updateRackDetails = mutation({
   args: {
     id: v.id("racks"),
@@ -122,213 +154,205 @@ export const updateRackDetails = mutation({
     size: v.optional(v.union(v.literal("small"), v.literal("medium"), v.literal("large"))),
     location: v.optional(v.string()),
     maxOrders: v.optional(v.number()),
-    status: v.optional(
-      v.union(
-        v.literal("available"),
-        v.literal("occupied"),
-        v.literal("maintenance"),
-        v.literal("out-of-order"),
-        v.literal("full"),
-      ),
-    ),
   },
-  handler: async (ctx, args): Promise<Doc<"racks">> => {
-    const loggedInUserId = await authComponent.getAuthUser(ctx);
-    if (!loggedInUserId) throw new Error("Not authenticated");
-    const rack = await ctx.db.query("racks").withIndex("by_id", (q) => q.eq("_id", args.id)).first();
+  handler: async (ctx, args): Promise<{ success: boolean; message: string }> => {
+    const role = await ctx.runQuery(api.userRoles.getCurrentUserRole, {});
+    if (!role) throw new Error("You are not authenticated");
+    if (role !== "admin" && role !== "worker") {
+      return { success: false, message: "You are not authorized to update rack details" };
+    }
+
+    const rack = await ctx.db.get(args.id);
     if (!rack) throw new Error("Rack not found");
-    const newRackDetails={
-        label: args.label || rack.label,
-        size: args.size || rack.size,
-        location: args.location || rack.location,
-        status: args.status || rack.status,
-        isReserved: args.isReserved ?? rack.isReserved,
-        maxOrders: args.maxOrders ?? rack.maxOrders,
-    };
-    const updatedRack = await ctx.db.patch(args.id, newRackDetails);
-    return updatedRack as unknown as Doc<"racks">;
+
+    const updates: Partial<Doc<"racks">> = { updatedAt: Date.now() };
+    if (args.label !== undefined) updates.label = args.label;
+    if (args.size !== undefined) updates.size = args.size;
+    if (args.location !== undefined) updates.location = args.location;
+    if (args.isReserved !== undefined) updates.isReserved = args.isReserved;
+    if (args.maxOrders !== undefined) updates.maxOrders = args.maxOrders;
+
+    await ctx.db.patch(args.id, updates);
+    return { success: true, message: "Rack details updated successfully" };
   },
 });
 
-// delete rack
+// Reserve a rack (admin/worker)
+export const reserveRack = mutation({
+  args: {
+    id: v.id("racks"),
+  },
+  handler: async (ctx, args): Promise<{ success: boolean; message: string }> => {
+    const role = await ctx.runQuery(api.userRoles.getCurrentUserRole, {});
+    if (!role) throw new Error("You are not authenticated");
+    if (role !== "admin" && role !== "worker") {
+      return { success: false, message: "You are not authorized to reserve a rack" };
+    }
+
+    const rack = await ctx.db.get(args.id);
+    if (!rack) throw new Error("Rack not found");
+
+    if (rack.isReserved) {
+      return { success: false, message: "Rack is already reserved" };
+    }
+    if (rack.status === "maintenance" || rack.status === "out-of-order") {
+      return { success: false, message: `Cannot reserve a rack that is ${rack.status}` };
+    }
+
+    await ctx.db.patch(args.id, { isReserved: true, updatedAt: Date.now() });
+    return { success: true, message: "Rack reserved successfully" };
+  },
+});
+
+// Unreserve a rack (admin/worker)
+export const unreserveRack = mutation({
+  args: {
+    id: v.id("racks"),
+  },
+  handler: async (ctx, args): Promise<{ success: boolean; message: string }> => {
+    const role = await ctx.runQuery(api.userRoles.getCurrentUserRole, {});
+    if (!role) throw new Error("You are not authenticated");
+    if (role !== "admin" && role !== "worker") {
+      return { success: false, message: "You are not authorized to unreserve a rack" };
+    }
+
+    const rack = await ctx.db.get(args.id);
+    if (!rack) throw new Error("Rack not found");
+
+    if (!rack.isReserved) {
+      return { success: false, message: "Rack is not reserved" };
+    }
+
+    await ctx.db.patch(args.id, { isReserved: false, updatedAt: Date.now() });
+    return { success: true, message: "Rack unreserved successfully" };
+  },
+});
+
+// Delete a rack (admin only)
 export const deleteRack = mutation({
   args: {
     id: v.id("racks"),
   },
-  handler: async (ctx, args): Promise<string> => {
-    const loggedInUserId = await authComponent.getAuthUser(ctx);
-    if (!loggedInUserId) throw new Error("Not authenticated");
-    const rack = await ctx.db.query("racks").withIndex("by_id", (q) => q.eq("_id", args.id)).first();
-    if (!rack) throw new Error("Rack not found");
-    await ctx.db.delete(args.id);
-    return "Rack deleted successfully";
-  },
-});
-
-// get all available racks
-export const getAllAvailableRacks = query({
-  handler: async (ctx): Promise<Doc<"racks">[]> => {
-    const loggedInUserId = await authComponent.getAuthUser(ctx);
-    if (!loggedInUserId) throw new Error("Not authenticated");
-    const racks = await ctx.db.query("racks").withIndex("by_status", (q) => q.eq("status", "available")).collect();
-
-    // filter to remove full / maintenance / out-of-order
-    const availableRacks = racks.filter((rack) => rack.status !== "full" && rack.status !== "maintenance" && rack.status !== "out-of-order");
-   
-    return availableRacks;
-  },
-});
-
-// get all reserved racks
-export const getAllReservedRacks = query({
-  handler: async (ctx): Promise<Doc<"racks">[]> => {
-    const loggedInUserId = await authComponent.getAuthUser(ctx);
-    if (!loggedInUserId) throw new Error("Not authenticated");
-    const racks = await ctx.db.query("racks").withIndex("by_status", (q) => q.eq("status", "occupied")).collect();
-    return racks as unknown as Doc<"racks">[];
-  },
-});
-
-// add order to rack
-export const addOrderToRack = mutation({
-  args: {
-    id: v.id("racks"),
-    orderId: v.id("orders"),
-  },
-  handler: async (ctx, args): Promise<Doc<"racks">> => {
-    const loggedInUserId = await authComponent.getAuthUser(ctx);
-    if (!loggedInUserId) throw new Error("Not authenticated");
-    const rack = await ctx.db.query("racks").withIndex("by_id", (q) => q.eq("_id", args.id)).first();
-    if (!rack) throw new Error("Rack not found");
-    if ((rack.orders?.length || 0) >= rack.maxOrders) throw new Error("Rack is full");
-    const nextOrders = [...(rack.orders || []), args.orderId];
-    const isFull = nextOrders.length >= rack.maxOrders;
-    const nextStatus =
-      rack.status === "maintenance" || rack.status === "out-of-order"
-        ? rack.status
-        : isFull
-          ? ("full" as const)
-          : nextOrders.length > 0
-            ? ("occupied" as const)
-            : rack.status;
-    const updatedRack = await ctx.db.patch(args.id, {
-      orders: nextOrders,
-      status: nextStatus,
-      updatedAt: Date.now(),
-    });
-    return updatedRack as unknown as Doc<"racks">;
-  },
-});
-
-// remove order from rack
-export const removeOrderFromRack = mutation({
-  args: {
-    id: v.id("racks"),
-    orderId: v.id("orders"),
-  },
-  handler: async (ctx, args): Promise<Doc<"racks">> => {
-    const loggedInUserId = await authComponent.getAuthUser(ctx);
-    if (!loggedInUserId) throw new Error("Not authenticated");
-    const rack = await ctx.db.query("racks").withIndex("by_id", (q) => q.eq("_id", args.id)).first();
-    if (!rack) throw new Error("Rack not found");
-    if (!rack.orders?.includes(args.orderId)) throw new Error("Order not found in rack");
-    const nextOrders = (rack.orders || []).filter((order) => order !== args.orderId);
-    let nextStatus = rack.status;
-    if (rack.status === "maintenance" || rack.status === "out-of-order") {
-      nextStatus = rack.status;
-    } else if (nextOrders.length >= rack.maxOrders) {
-      nextStatus = "full";
-    } else if (nextOrders.length > 0) {
-      nextStatus = "occupied";
-    } else {
-      nextStatus = "available";
+  handler: async (ctx, args): Promise<{ success: boolean; message: string }> => {
+    const role = await ctx.runQuery(api.userRoles.getCurrentUserRole, {});
+    if (!role) throw new Error("You are not authenticated");
+    if (role !== "admin") {
+      return { success: false, message: "Only admins can delete racks" };
     }
-    const updatedRack = await ctx.db.patch(args.id, {
-      orders: nextOrders,
-      status: nextStatus,
-      updatedAt: Date.now(),
-    });
-    return updatedRack as unknown as Doc<"racks">;
+
+    const rack = await ctx.db.get(args.id);
+    if (!rack) throw new Error("Rack not found");
+
+    if (rack.currentOrders && rack.currentOrders.length > 0) {
+      return { success: false, message: "Cannot delete a rack with active orders" };
+    }
+
+    await ctx.db.delete(args.id);
+    return { success: true, message: "Rack deleted successfully" };
   },
 });
 
-// get all orders for a rack
+// Get all racks that can accept orders (not full, not reserved, not maintenance/out-of-order)
+export const getAllAvailableRacks = query({
+  args: {},
+  handler: async (ctx): Promise<Doc<"racks">[]> => {
+    const role = await ctx.runQuery(api.userRoles.getCurrentUserRole, {});
+    if (!role) throw new Error("You are not authenticated");
+    if (role !== "admin" && role !== "worker") {
+      return [];
+    }
+
+    const allRacks = await ctx.db.query("racks").collect();
+    return allRacks.filter((rack) => {
+      if (rack.isReserved) return false;
+      if (rack.status === "maintenance" || rack.status === "out-of-order") return false;
+      const currentCount = rack.currentOrders?.length ?? 0;
+      return currentCount < rack.maxOrders;
+    });
+  },
+});
+
+// Get all current orders for a rack (admin/worker)
 export const getAllOrdersForRack = query({
   args: {
     id: v.id("racks"),
   },
   handler: async (ctx, args): Promise<Order[]> => {
-    const loggedInUserId = await authComponent.getAuthUser(ctx);
-    if (!loggedInUserId) throw new Error("Not authenticated");
-    const rack = await ctx.db.query("racks").withIndex("by_id", (q) => q.eq("_id", args.id)).first();
+    const role = await ctx.runQuery(api.userRoles.getCurrentUserRole, {});
+    if (!role) throw new Error("You are not authenticated");
+    if (role !== "admin" && role !== "worker") {
+      return [];
+    }
+
+    const rack = await ctx.db.get(args.id);
     if (!rack) throw new Error("Rack not found");
+
     const orders: Order[] = [];
     for (const orderId of rack.currentOrders || []) {
-      const order = await ctx.db.query("orders").withIndex("by_id", (q) => q.eq("_id", orderId)).first();
-      if (order) orders.push(order as unknown as Order);
+      const order = await ctx.db.get(orderId);
+      if (order) orders.push(order);
     }
     return orders;
   },
 });
 
-// internal function to check rack availability
+// ── Internal functions (called from orders.ts) ──────────────────────────
+
+// Check rack availability
 export const internalRackAvailabilityCheck = internalQuery({
   args: {
     id: v.id("racks"),
   },
-  handler: async (ctx, args): Promise<{ available: boolean, reason: string }> => {
+  handler: async (ctx, args): Promise<{ available: boolean; reason: string }> => {
     const rack = await ctx.db.get(args.id);
     if (!rack) return { available: false, reason: "Rack not found" };
-
     if (rack.isReserved) return { available: false, reason: "Rack is reserved" };
+    if (rack.status === "maintenance" || rack.status === "out-of-order") {
+      return { available: false, reason: `Rack is ${rack.status}` };
+    }
 
-    if (rack.status === "full") return { available: false, reason: "Rack is full" };
-
-    const used = rack.orders?.length ?? 0;
-    // check if rack is available
-    const rackAvailability =((rack.status !== "out-of-order" && rack.status !=="maintenance" ) && rack.maxOrders >= (rack.currentOrders?.length ?? 0));
-
-    if (!rackAvailability) return { available: false, reason: "Rack is not available" };
+    const currentCount = rack.currentOrders?.length ?? 0;
+    if (currentCount >= rack.maxOrders) {
+      return { available: false, reason: "Rack is full" };
+    }
 
     return { available: true, reason: "Rack is available" };
   },
-})
+});
 
-// internal function to add order to rack
+// Add order to rack (updates both orders history and currentOrders)
 export const internalAddOrderToRack = internalMutation({
   args: {
     id: v.id("racks"),
     orderId: v.id("orders"),
   },
-  handler: async (ctx, args): Promise<{ success: boolean, reason: string, orders: number }> => {
+  handler: async (ctx, args): Promise<{ success: boolean; reason: string; orders: number }> => {
     const rack = await ctx.db.get(args.id);
     if (!rack) return { success: false, reason: "Rack not found", orders: 0 };
-    const count = rack.orders?.length ?? 0;
-    // Re-check capacity in the same transaction (avoids races with concurrent createOrder)
-    if (count >= rack.maxOrders) {
-      return { success: false, reason: "Rack is full", orders: count };
+
+    const currentOrders = rack.currentOrders ?? [];
+    if (currentOrders.includes(args.orderId)) {
+      return { success: false, reason: "Order already on this rack", orders: currentOrders.length };
     }
-    const nextOrders = [...(rack.orders ?? []), args.orderId];
-    const isFull = nextOrders.length >= rack.maxOrders;
-    const nextStatus =
-      rack.status === "maintenance" || rack.status === "out-of-order"
-        ? rack.status
-        : isFull
-          ? ("full" as const)
-          : nextOrders.length > 0
-            ? ("occupied" as const)
-            : rack.status;
+    if (currentOrders.length >= rack.maxOrders) {
+      return { success: false, reason: "Rack is full", orders: currentOrders.length };
+    }
+
+    const nextCurrentOrders = [...currentOrders, args.orderId];
+    const nextAllOrders = [...(rack.orders ?? []), args.orderId];
+    const nextStatus = deriveRackStatus(rack.status, nextCurrentOrders.length, rack.maxOrders);
+
     await ctx.db.patch(args.id, {
-      orders: nextOrders,
+      orders: nextAllOrders,
+      currentOrders: nextCurrentOrders,
       status: nextStatus,
       updatedAt: Date.now(),
     });
-    return { success: true, reason: "Order added to rack successfully", orders: nextOrders.length };
+    return { success: true, reason: "Order added to rack successfully", orders: nextCurrentOrders.length };
   },
 });
 
-
-//update rack status
+// Update rack status
 export const internalUpdateRackStatus = internalMutation({
   args: {
     id: v.id("racks"),
@@ -340,40 +364,44 @@ export const internalUpdateRackStatus = internalMutation({
       v.literal("full"),
     ),
   },
-  handler: async (ctx, args): Promise<{success: boolean, message: string}> => {
-    const rack = await ctx.db.query("racks").withIndex("by_id", (q) => q.eq("_id", args.id)).first();
-    if (!rack) return {success: false, message: `Rack ${args.id} not found`};
-  // check current status vs new status
-  if(rack.status === args.status) return {success: true, message: `Rack ${rack.label} status is already ${args.status}`};
-  if( rack.isReserved) return {success: false, message: `Rack ${rack.label} is reserved`};
+  handler: async (ctx, args): Promise<{ success: boolean; message: string }> => {
+    const rack = await ctx.db.get(args.id);
+    if (!rack) return { success: false, message: `Rack ${args.id} not found` };
+    if (rack.status === args.status) {
+      return { success: true, message: `Rack ${rack.label} status is already ${args.status}` };
+    }
+    if (rack.isReserved) {
+      return { success: false, message: `Rack ${rack.label} is reserved` };
+    }
 
     await ctx.db.patch(args.id, { status: args.status, updatedAt: Date.now() });
-    return {success: true, message: `Rack ${rack.label} status updated to ${args.status}`};
-  }
+    return { success: true, message: `Rack ${rack.label} status updated to ${args.status}` };
+  },
 });
 
-// internal remove order from rack
+// Remove order from rack (removes from currentOrders only; history in orders stays)
 export const internalRemoveOrderFromRack = internalMutation({
   args: {
     id: v.id("racks"),
     orderId: v.id("orders"),
   },
-  handler: async (ctx, args): Promise<{success: boolean, message: string}> => {
-    const rack = await ctx.db.query("racks").withIndex("by_id", (q) => q.eq("_id", args.id)).first();
-    if (!rack) return {success: false, message: `Rack not found`};
-    if (!rack.orders?.includes(args.orderId)) return {success: false, message: `Order not found in rack`};
-    const nextOrders = (rack.orders || []).filter((order) => order !== args.orderId);
-    let nextStatus = rack.status;
-    if (rack.status === "maintenance" || rack.status === "out-of-order") {
-      nextStatus = rack.status;
-    } else if (nextOrders.length >= rack.maxOrders) {
-      nextStatus = "full";
-    } else if (nextOrders.length > 0) {
-      nextStatus = "occupied";
-    } else {
-      nextStatus = "available";
+  handler: async (ctx, args): Promise<{ success: boolean; message: string }> => {
+    const rack = await ctx.db.get(args.id);
+    if (!rack) return { success: false, message: "Rack not found" };
+
+    const currentOrders = rack.currentOrders ?? [];
+    if (!currentOrders.includes(args.orderId)) {
+      return { success: false, message: "Order not found in rack" };
     }
-    await ctx.db.patch(args.id, { orders: nextOrders, status: nextStatus, updatedAt: Date.now() });
-    return {success: true, message: `Order removed from rack successfully`};
+
+    const nextCurrentOrders = currentOrders.filter((id) => id !== args.orderId);
+    const nextStatus = deriveRackStatus(rack.status, nextCurrentOrders.length, rack.maxOrders);
+
+    await ctx.db.patch(args.id, {
+      currentOrders: nextCurrentOrders,
+      status: nextStatus,
+      updatedAt: Date.now(),
+    });
+    return { success: true, message: "Order removed from rack successfully" };
   },
 });
