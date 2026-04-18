@@ -18,17 +18,17 @@ function deliveryStatusBadge(status: Doc<"deliveries">["status"]) {
       className:
         "border-amber-500/25 bg-amber-500/10 text-amber-800 dark:text-amber-400",
     },
-    "in-transit": {
-      label: "In transit",
+    "picking-up": {
+      label: "Picking up",
       className: "border-blue-500/25 bg-blue-500/10 text-blue-700 dark:text-blue-400",
     },
-    "on-delivery": {
-      label: "On delivery",
+    delivering: {
+      label: "Delivering",
       className:
         "border-violet-500/25 bg-violet-500/10 text-violet-700 dark:text-violet-400",
     },
-    delivered: {
-      label: "Delivered",
+    completed: {
+      label: "Completed",
       className:
         "border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
     },
@@ -56,9 +56,24 @@ export default async function OrderDetailsDeliveryCard({
     return <OrderAddDeliveryPlaceholder orderId={orderId} />;
   }
 
-  const delivery = await fetchAuthQuery(api.deliveries.getDeliveryById, {
+  const { delivery } = await fetchAuthQuery(api.deliveries.getDeliveryById, {
     id: deliveryId,
   });
+
+  if (!delivery) {
+    return (
+      <Card className="w-full border-foreground/10">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg">Delivery</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground text-sm">
+            Delivery record not found. It may have been removed.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="w-full border-foreground/10">

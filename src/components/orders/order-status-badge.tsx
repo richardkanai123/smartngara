@@ -1,10 +1,10 @@
 'use client';
 
-import React, { Suspense } from 'react'
+import { Suspense } from 'react'
 import { Badge } from '../ui/badge';
 import { getStatusIcon } from '@/lib/order-helpers';
 import { cn } from '@/lib/utils';
-import { Order } from '@convex/schema';
+import type { Order } from '@convex/schema';
 import { Skeleton } from '../ui/skeleton';
 
 const statusConfig: Record<Order["status"], { bg: string, text: string, border: string, dot: string, pulse?: boolean }> = {
@@ -37,13 +37,8 @@ const OrderStatusBadge = ({status}: {status: Order["status"]}) => {
             )}
         >
             <span className="flex items-center gap-1.5">
-                <span className="relative flex h-2 w-2 shrink-0">
-                  {config.pulse && (
-                    <span className={cn("animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 duration-1000", config.dot)}></span>
-                  )}
-                  <span className={cn("relative inline-flex rounded-full h-2 w-2", config.dot)}></span>
-                </span>
-                {Icon && <Icon className="w-3.5 h-3.5 shrink-0" strokeWidth={2.5} />}
+                
+                {Icon && <Icon className={`w-3.5 h-3.5 shrink-0 ${status === "processing" ? "animate-spin" : ""}`} strokeWidth={2.5} />}
                 <span className="truncate">{formatStatus(status)}</span>
             </span>
         </Badge>    

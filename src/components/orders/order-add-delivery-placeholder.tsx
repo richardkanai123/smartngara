@@ -27,6 +27,7 @@ export function OrderAddDeliveryPlaceholder({
   orderId,
 }: OrderAddDeliveryPlaceholderProps) {
   const [open, setOpen] = useState(false);
+  
 
   return (
     <Card className="w-full border-foreground/10">
@@ -93,13 +94,13 @@ export function OrderAddDeliveryPlaceholder({
                 />
               </div>
             </form>
-            <DialogFooter className="gap-2 sm:gap-0">
-              <DialogClose render={<Button type="button" variant="outline" />}>
-                Cancel
-              </DialogClose>
-              <Button type="submit" form="add-delivery-form">
-                Save delivery
+            <DialogFooter className="w-full flex justify-end items-end gap-2">
+              <Button type="submit" form="add-delivery-form" className="w-full sm:w-auto">
+                Add delivery
               </Button>
+              <DialogClose render={<Button type="button" variant="outline" className="w-full sm:w-auto" />}>
+                Close
+              </DialogClose>
             </DialogFooter>
           </DialogContent>
         </Dialog>
