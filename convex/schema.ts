@@ -255,3 +255,4 @@ export type Transaction = Doc<"transactions">;
 export type Notification = Doc<"notifications">;
 export type UserRole = Doc<"userRoles">;
 export type Invite = Doc<"invites">;
+export type Wallet = Doc<"wallets">;

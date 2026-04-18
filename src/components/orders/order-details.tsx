@@ -93,13 +93,14 @@ const OrderDetails = async ({ orderId }: { orderId: string }) => {
             <Suspense fallback={<Spinner className="size-4" />}>
             <OrderHandlerCard handlerId={handlerId} />
             </Suspense>
-            <Suspense fallback={<Spinner className="size-4" />}>
-            <OrderDetailsDeliveryCard deliveryId={deliveryId} orderId={id} />
-            </Suspense>
-            <Suspense fallback={<Spinner className="size-4" />}>
-            <OrderDetailsRackCard rackId={rackId} />
-            </Suspense>
-           
+            {isDeliveryRequired && (
+              <Suspense fallback={<Spinner className="size-4" />}>
+                <OrderDetailsDeliveryCard deliveryId={deliveryId} orderId={id} />
+              </Suspense>
+            )}
+              <Suspense fallback={<Spinner className="size-4" />}>
+                <OrderDetailsRackCard orderId={id} status={status} rackId={rackId} />
+              </Suspense>
           </aside>
         </div>
       </Suspense>

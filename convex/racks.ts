@@ -2,7 +2,7 @@ import { internalMutation, internalQuery, mutation, query } from "./_generated/s
 import { v } from "convex/values";
 import type { Doc } from "./_generated/dataModel";
 import type { Order } from "./schema";
-import { api } from "./_generated/api";
+import { api, internal } from "./_generated/api";
 
 type RackStatus = Doc<"racks">["status"];
 
@@ -89,10 +89,6 @@ const rackStatusValue = v.union(
   v.literal("full"),
 );
 
-/** Active orders on the rack; used for occupancy checks. */
-function getRackOccupancyCount(rack: Doc<"racks">): number {
-  return rack.currentOrders?.length ?? 0;
-}
 
 /**
  * Updates rack operational status only. Blocks changes while the rack has active orders.
@@ -403,5 +399,86 @@ export const internalRemoveOrderFromRack = internalMutation({
       updatedAt: Date.now(),
     });
     return { success: true, message: "Order removed from rack successfully" };
+  },
+});
+
+
+// assign a rack to an order
+export const assignRackToOrder = mutation({
+  args: {
+    orderId: v.id("orders"),
+    rackId: v.id("racks"),
+  },
+  handler: async (ctx, args): Promise<{ success: boolean; message: string }> => {
+    const role = await ctx.runQuery(api.userRoles.getCurrentUserRole, {});
+    if (!role) throw new Error("You are not authenticated");
+    if (role !== "admin" && role !== "worker") {
+      return { success: false, message: "You are not authorized to assign a rack" };
+    }
+
+    const order = await ctx.db.get(args.orderId);
+    if (!order) return { success: false, message: "Order not found" };
+    if (order.status === "cancelled" || order.status === "delivered") {
+      return { success: false, message: `Cannot assign a rack to an order that is ${order.status}` };
+    }
+
+    const rack = await ctx.db.get(args.rackId);
+    if (!rack) return { success: false, message: "Rack not found" };
+
+    let currentOrders = rack.currentOrders ?? [];
+    const alreadyOnTarget = currentOrders.includes(args.orderId);
+
+    if (order.rackId === args.rackId && alreadyOnTarget) {
+      return { success: true, message: "Order already assigned to this rack" };
+    }
+
+    if (rack.isReserved) return { success: false, message: "Rack is reserved" };
+    if (rack.status === "maintenance" || rack.status === "out-of-order") {
+      return { success: false, message: `Cannot assign a rack that is ${rack.status}` };
+    }
+    if (!alreadyOnTarget && currentOrders.length >= rack.maxOrders) {
+      return { success: false, message: "Rack is full" };
+    }
+
+    if (order.rackId && order.rackId !== args.rackId) {
+      const result = await ctx.runMutation(internal.racks.internalRemoveOrderFromRack, {
+        id: order.rackId,
+        orderId: args.orderId,
+      });
+      if (!result.success && result.message !== "Order not found in rack") {
+        return { success: false, message: result.message };
+      }
+    }
+
+    const rackFresh = await ctx.db.get(args.rackId);
+    if (!rackFresh) return { success: false, message: "Rack not found" };
+    currentOrders = rackFresh.currentOrders ?? [];
+
+    if (currentOrders.includes(args.orderId)) {
+      const now = Date.now();
+      await ctx.db.patch(args.orderId, { rackId: args.rackId, updatedAt: now });
+      return { success: true, message: "Rack assigned to order successfully" };
+    }
+
+    if (currentOrders.length >= rackFresh.maxOrders) {
+      return { success: false, message: "Rack is full" };
+    }
+
+    const nextCurrentOrders = [...currentOrders, args.orderId];
+    const nextAllOrders = (rackFresh.orders ?? []).includes(args.orderId)
+      ? [...(rackFresh.orders ?? [])]
+      : [...(rackFresh.orders ?? []), args.orderId];
+    const nextStatus = deriveRackStatus(rackFresh.status, nextCurrentOrders.length, rackFresh.maxOrders);
+    const now = Date.now();
+
+    await ctx.db.patch(args.orderId, { rackId: args.rackId, updatedAt: now });
+    await ctx.db.patch(args.rackId, {
+      orders: nextAllOrders,
+      currentOrders: nextCurrentOrders,
+      status: nextStatus,
+      updatedAt: now,
+    });
+
+    return { success: true, message: "Rack assigned to order successfully" };
   },
 });

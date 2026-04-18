@@ -7,6 +7,7 @@ import ProcessOrderBtn from "./order-action-buttons/process-order-btn";
 import ReadyOrderBtn from "./order-action-buttons/ready-order-button";
 import DeleteOrderButton from "./order-action-buttons/delete-order-button";
 
+
 const OrderButtons = ({
   orderId,
   status,
@@ -23,7 +24,9 @@ const OrderButtons = ({
         <ReadyOrderBtn orderId={orderId} status={status} />
       )}
       {status !== "cancelled" && status !== "delivered" && (
-        <CancelOrderButton orderId={orderId} status={status} />
+
+          <CancelOrderButton orderId={orderId} status={status} />
+
       )}
       <DeleteOrderButton orderId={orderId} status={status} />
     </div>

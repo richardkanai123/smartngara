@@ -54,13 +54,16 @@ export const createOrder = mutation({
       if (!availability.available) throw new Error(availability.reason);
     }
 
+
+    const dateNow = Date.now();
+
     const order = await ctx.db.insert("orders", {
       clientId: args.clientId,
       status: args.status,
       items: args.items,
       instructions: args.instructions,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      createdAt: dateNow,
+      updatedAt: dateNow,
       handlerId: loggedInUserId._id,
       completedAt: undefined,
       isDeliveryRequired: args.isDeliveryRequired,

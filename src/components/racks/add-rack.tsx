@@ -1,7 +1,7 @@
 "use client";
 import { usePreloadedAuthQuery } from "@convex-dev/better-auth/nextjs/client";
 import { api } from "@convex/_generated/api";
-import { Preloaded } from "convex/react";
+import type { Preloaded } from "convex/react";
 import DefaultError from "../default-error";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -36,15 +36,10 @@ const AddRack = ({
   preloadedUserQuery: Preloaded<typeof api.userRoles.getMyRole>;
 }) => {
   const userRole = usePreloadedAuthQuery(preloadedUserQuery);
-  if (userRole !== "admin") {
-    return (
-      <DefaultError errorMessage="You are not authorized to access this page" />
-    );
-  }
+  
   const {
-    control,
     handleSubmit,
-    formState: { errors, isSubmitSuccessful, isSubmitting },
+    formState: { errors, isSubmitting },
     ...form
   } = useForm<z.infer<typeof addRackSchema>>({
     resolver: zodResolver(addRackSchema),
@@ -85,6 +80,12 @@ const AddRack = ({
       toast.error(message);
     }
   };
+
+  if (userRole !== "admin" ) {
+    return (
+      <DefaultError errorMessage="You are not authorized to access this page" />
+    );
+  }
 
   return (
     <form
